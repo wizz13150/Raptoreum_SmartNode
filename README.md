@@ -29,12 +29,9 @@ Please check dk808's [Wiki](https://github.com/dk808/Raptoreum_SmartNode/wiki) f
 ## Installation
 - To install a Raptoreum Smartnode on Windows 10 or 11, open CMD or Powershell and run the following command :
 ```
-powershell.exe -ExecutionPolicy Bypass -Command "Invoke-WebRequest -Uri https://raw.githubusercontent.com/wizz13150/Raptoreum_Smartnode/main/SmartNode_Install.bat -OutFile $env:TEMP\SmartNode_Install.bat; & $env:TEMP\SmartNode_Install.bat"
+powershell -ExecutionPolicy Bypass -c "Invoke-WebRequest -Uri https://raw.githubusercontent.com/wizz13150/Raptoreum_Smartnode/main/SmartNode_Install.bat -OutFile SmartNode_Install.bat; .\SmartNode_Install.bat"
 ```
-- For the Testnet, please run the following command :
-```
-powershell.exe -ExecutionPolicy Bypass -Command "Invoke-WebRequest -Uri https://raw.githubusercontent.com/wizz13150/Raptoreum_Smartnode/main/SmartNode_Install_testnet.bat -OutFile $env:TEMP\SmartNode_Install_testnet.bat; & $env:TEMP\SmartNode_Install_testnet.bat"
-```
+
 - Or you can download the Batch file in the [Releases Section](https://github.com/wizz13150/Raptoreum_SmartNode/releases)
 
 
