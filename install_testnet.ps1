@@ -533,7 +533,7 @@ function Basic-Security {
         Write-CurrentTime; Write-Host "  Configuring firewall..." -ForegroundColor Cyan
         # Allow SSH and RTM ports
         New-NetFirewallRule -DisplayName "Allow SSH" -Direction Inbound -LocalPort $global:SSHPORT -Protocol TCP -Action Allow | Out-Null
-        New-NetFirewallRule -DisplayName "Allow Testnet RTM" -Direction Inbound -LocalPort $global:PORT -Protocol TCP -Action Allow | Out-Null
+        New-NetFirewallRule -DisplayName "Allow Testnet RTM" -Direction Inbound -LocalPort "10229" -Protocol TCP -Action Allow | Out-Null
         #New-NetFirewallRule -DisplayName "Allow Raptoreumd" -Direction Inbound -Program "C:\program files (x86)\raptoreumcore\raptoreumd.exe" -Action Allow -Protocol TCP -LocalPort 10229 | Out-Null
         #Set-NetFirewallRule -Name "Allow Raptoreumd" -Profile Any | Out-Null
         Write-CurrentTime; Write-Host "  Firewall configured successfully." -ForegroundColor Yellow
