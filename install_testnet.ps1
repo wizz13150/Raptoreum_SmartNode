@@ -16,7 +16,7 @@ if (-not (IsAdministrator)) {
 
 # Script vars
 #$BOOTSTRAP_ZIP = "https://bootstrap.raptoreum.com/testnet-bootstraps/testnet-bootstrap-1.3.17.02rc.zip"                        #Official testnet bootstrap (blockheight 98K)
-$BOOTSTRAP_ZIP = "https://github.com/wizz13150/Raptoreum_SmartNode/releases/download/SmartNode_Install/bootstrap-testnet.zip"   #wizz's bootstrap (blockheight 172K)
+$BOOTSTRAP_ZIP = "https://github.com/wizz13150/Raptoreum_SmartNode/releases/download/Raptoreum_SmartNode/bootstrap-testnet.zip" #wizz's bootstrap (blockheight 172K)
 $CONFIG_DIR = "$env:APPDATA\RaptoreumSmartnode"
 $COIN_PATH = "$env:ProgramFiles (x86)\RaptoreumCore"
 $configPath = Join-Path $CONFIG_DIR "nodetest\raptoreum_testnet.conf"
