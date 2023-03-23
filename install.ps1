@@ -562,7 +562,7 @@ function Basic-Security {
     if ($global:SECURITY_ANS -eq "1") {
         Write-CurrentTime; Write-Host "  Configuring firewall..." -ForegroundColor Cyan
         New-NetFirewallRule -DisplayName "Allow SSH" -Direction Inbound -LocalPort $global:SSHPORT -Protocol TCP -Action Allow | Out-Null
-        New-NetFirewallRule -DisplayName "Allow RTM" -Direction Inbound -LocalPort $global:PORT -Protocol TCP -Action Allow | Out-Null
+        New-NetFirewallRule -DisplayName "Allow RTM" -Direction Inbound -LocalPort "10226" -Protocol TCP -Action Allow | Out-Null
         Write-CurrentTime; Write-Host "  Firewall configured successfully." -ForegroundColor Yellow
     } else {
         Write-CurrentTime; Write-Host "  Skipping basic security..." -ForegroundColor Yellow
