@@ -160,11 +160,11 @@ function Create-Shortcuts {
     # Create SmartNodeBash.lnk
     $ShortcutPath = [Environment]::GetFolderPath("Desktop") + "\SmartNodeBash_testnet.lnk"
     Write-CurrentTime; Write-Host "  Creating a desktop shortcut..." -ForegroundColor Cyan
-    $TargetPath = "cmd.exe"
+    $TargetPath = "powershell.exe"
     $WScriptShell = New-Object -ComObject WScript.Shell
     $Shortcut = $WScriptShell.CreateShortcut($ShortcutPath)
     $Shortcut.TargetPath = $TargetPath
-    $Command = " /c `"$env:USERPROFILE\SmartNodeBash_testnet.bat`""
+    Command = "-Command `"Start-Process cmd.exe -ArgumentList '/c `"$env:USERPROFILE\SmartNodeBash_testnet.bat`"' -Verb RunAs`""
     $Shortcut.Arguments = $Command
     $Shortcut.IconLocation = "cmd.exe"
     $Shortcut.WorkingDirectory = [Environment]::GetFolderPath("Desktop")
