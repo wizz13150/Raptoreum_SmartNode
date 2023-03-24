@@ -187,7 +187,7 @@ function Create-Shortcuts {
     $WScriptShell = New-Object -ComObject WScript.Shell
     $Shortcut = $WScriptShell.CreateShortcut($ShortcutPath)
     $Shortcut.TargetPath = $TargetPath
-    Command = "-Command `"Start-Process cmd.exe -ArgumentList '/c `"$env:USERPROFILE\SmartNodeBash.bat`"' -Verb RunAs`""
+    $Command = "-Command `"Start-Process cmd.exe -ArgumentList '/c `"$env:USERPROFILE\SmartNodeBash.bat`"' -Verb RunAs`""
     $Shortcut.Arguments = $Command
     $Shortcut.IconLocation = "cmd.exe"
     $Shortcut.WorkingDirectory = [Environment]::GetFolderPath("Desktop")
