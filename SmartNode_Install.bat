@@ -27,7 +27,8 @@ if %choice%==1 (
     set DOWNLOAD_URL=https://raw.githubusercontent.com/wizz13150/Raptoreum_SmartNode/main/install_testnet.ps1
     set FILE_NAME=install_testnet.ps1
 ) else (
-    echo Invalid choice. Please enter 1 or 2.
+    echo Invalid choice. Please enter 1 or 2...
+    echo.
     goto :menu
 )
 
