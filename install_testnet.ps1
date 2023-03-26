@@ -24,17 +24,17 @@ $bootstrapZipPath = "$env:APPDATA\bootstrap\bootstrap-testnet.zip"
 $serviceName = "RTMServiceTestnet"
 
 
-Write-Host "=================================" -ForegroundColor Yellow 
+Write-Host "================================================================================" -ForegroundColor Yellow 
 Write-Host " RTM Smartnode Setup for Testnet" -ForegroundColor Yellow 
-Write-Host "=================================" -ForegroundColor Yellow 
+Write-Host "================================================================================" -ForegroundColor Yellow 
 Write-Host ""
 Write-Host " July 2021, created and updated by dk808 from AltTank" -ForegroundColor Cyan 
 Write-Host " With Smartnode healthcheck by Delgon" -ForegroundColor Cyan
 Write-Host " March 2023, adapted to Windows by Wizz" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "=================================================================" -ForegroundColor Yellow
+Write-Host "================================================================================" -ForegroundColor Yellow
 Write-Host " Remember to always encrypt your wallet with a strong password !" -ForegroundColor Yellow 
-Write-Host "=================================================================" -ForegroundColor Yellow
+Write-Host "================================================================================" -ForegroundColor Yellow
 Write-Host " Testnet Node setup starting, press [CTRL-C] to cancel..." -ForegroundColor Cyan 
 Start-Sleep -Seconds 1
 
