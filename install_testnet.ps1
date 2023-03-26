@@ -369,7 +369,7 @@ function Chain-Backup {
     Write-CurrentTime; Write-Host "  Creating bootstrap script..." -ForegroundColor Cyan
     $chainBackupScript = @"
 `$bootstrapZipPath = "$bootstrapZipPath"
-`$configDir = "`$env:APPDATA\RaptoreumSmartNode"
+`$configDir = "$configDir"
 Write-Host "(`$((Get-Date).ToString('yyyy-MM-dd HH:mm:ss')))  Creating blockchain backup (bootstrap)..." -ForegroundColor Yellow
 Move-Item -Path "`$env:USERPROFILE\check_testnet.ps1" -Destination "`$env:USERPROFILE\temp.ps1" -ErrorAction SilentlyContinue -Force
 Stop-Service -Name $serviceName -ErrorAction SilentlyContinue -Force
