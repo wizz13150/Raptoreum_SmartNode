@@ -2,7 +2,6 @@
 $url = @( 'https://explorer.raptoreum.com/', 'https://raptor.mopsus.com/' )
 $url_ID = 0
 $bootstrapZip = "https://bootstrap.raptoreum.com/bootstraps/bootstrap.zip"
-$raptoreumCLI = $env:raptoreumcli
 $configDir = "$env:APPDATA\RaptoreumSmartnode"
 $serviceName = "RTMService"
 $bootstrapZipPath = "$env:APPDATA\bootstrap\bootstrap.zip"
