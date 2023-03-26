@@ -419,22 +419,16 @@ if (Test-Path `$7zipKey) {
     `$zipProgram = (Get-ItemProperty `$7zipKey).'Path' + "7z.exe"
 }
 if (`$zipProgram) {
-    Write-CurrentTime; Write-Host "  7-Zip detected, using 7-Zip to compress the bootstrap. Faster..." -ForegroundColor Cyan
+    Write-Host "(`$((Get-Date).ToString('yyyy-MM-dd HH:mm:ss')))  7-Zip detected, using 7-Zip to compress the bootstrap. Faster..." -ForegroundColor Cyan
     & "`$zipProgram" a -tzip `$bootstrapZipPath "`$configDir\blocks" "`$configDir\chainstate" "`$configDir\evodb" "`$configDir\llmq"
 } else {
-    Write-CurrentTime; Write-Host "  7-Zip not detected, using 'Expand-Archive' to compress the bootstrap. Slower..." -ForegroundColor Cyan
+    Write-Host "(`$((Get-Date).ToString('yyyy-MM-dd HH:mm:ss')))  7-Zip not detected, using 'Expand-Archive' to compress the bootstrap. Slower..." -ForegroundColor Cyan
     Compress-Archive -Path "`$configDir\blocks", "`$configDir\chainstate", "`$configDir\evodb", "`$configDir\llmq" -DestinationPath `$bootstrapZipPath
 }
 Write-Host "(`$((Get-Date).ToString('yyyy-MM-dd HH:mm:ss')))  Bootstrap created" -ForegroundColor Green
 Start-Service -Name $serviceName -ErrorAction SilentlyContinue
 Move-Item -Path "`$env:USERPROFILE\temp.ps1" -Destination "`$env:USERPROFILE\check.ps1" -ErrorAction SilentlyContinue -Force
 "@
-
-
-
-
-
-
     Set-Content -Path "$env:USERPROFILE\chainbackup.ps1" -Value $chainBackupScript -ErrorAction SilentlyContinue -Force
     Write-CurrentTime; Write-Host "  Script created: $env:USERPROFILE\chainbackup.ps1..." -ForegroundColor Yellow
     Start-Sleep -Seconds 1
