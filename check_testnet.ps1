@@ -3,7 +3,6 @@ $url = @( 'https://testnet.raptoreum.com/', 'https://raptor.mopsus.com/' )   # T
 $url_ID = 0
 #$bootstrapZip = "https://bootstrap.raptoreum.com/testnet-bootstraps/testnet-bootstrap-1.3.17.02rc.zip"                        #Official testnet bootstrap (blockheight 98K)
 $bootstrapZip = "https://github.com/wizz13150/Raptoreum_SmartNode/releases/download/Raptoreum_SmartNode/bootstrap-testnet.zip" #wizz's bootstrap (blockheight 177K)
-$raptoreumCLI = $env:traptoreumcli
 $configDir = "$env:APPDATA\RaptoreumSmartnode"
 $serviceName = "RTMServiceTestnet"
 $bootstrapZipPath = "$env:APPDATA\bootstrap\bootstrap-testnet.zip"   # Testnet
@@ -42,7 +41,7 @@ function tryToKillDaemonGracefullyFirst {
     Write-CurrentTime; Write-Host "  Trying to kill daemon gracefully..." -ForegroundColor Yellow
     $raptoreumdProcess = Get-Process "raptoreumd" -ErrorAction SilentlyContinue
     if ($raptoreumdProcess) {
-        Stop-Process $raptoreumdProcess -ErrorAction SilentlyContinue -Force
+        cmd /C "$env:raptoreumcli stop" 2>&1
     }
     Start-Sleep -Seconds 10
     $localHeight = Get-Number (cmd /C "$env:traptoreumcli getblockcount" 2>&1)
