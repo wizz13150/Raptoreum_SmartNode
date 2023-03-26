@@ -207,7 +207,7 @@ function Bootstrap {
   if (Test-Path -Path $bootstrapZipPath) {
     Write-CurrentTime; Write-Host "  File bootstrap.zip detected, skip download..." -ForegroundColor Yellow
   } else {
-    Start-BitsTransfer -Source $bootstrapZip -Destination "$env:APPDATA\bootstrap\bootstrap.zip" -DisplayName "Downloading bootstrap from $bootstrapZip"  #Testnet
+    Start-BitsTransfer -Source $bootstrapZip -Destination "$env:APPDATA\bootstrap\bootstrap.zip" -DisplayName "Downloading bootstrap from $bootstrapZip"
   }
   $zipProgram = ""
   $7zipKey = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\7zFM.exe"
@@ -216,7 +216,7 @@ function Bootstrap {
   }
   if ($zipProgram) {
     Write-CurrentTime; Write-Host "  7-Zip detected, using 7-Zip to extract the bootstrap. Faster..." -ForegroundColor Cyan
-    & "$zipProgram" x "$env:APPDATA\bootstrap\bootstrap.zip" -o"$configDir" -y                                     #Testnet
+    & "$zipProgram" x "$env:APPDATA\bootstrap\bootstrap.zip" -o"$configDir" -y
   } else {
     Write-CurrentTime; Write-Host "  7-Zip not detected, using 'Expand-Archive' to extract the bootstrap. Slower..." -ForegroundColor Yellow
     Expand-Archive -Path "$env:APPDATA\bootstrap\bootstrap.zip" -DestinationPath $configDir -Force -ErrorAction SilentlyContinue
