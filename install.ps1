@@ -347,7 +347,6 @@ function Install-Bins {
 
 $global:bootstrapAns = ""
 function Bootstrap-Chain {
-        # If $QuickSetup is provided, just ask about bootstrap.
     param(
         [string]$QuickSetup
     )
@@ -371,6 +370,13 @@ function Bootstrap-Chain {
         $remoteFile = Invoke-WebRequest -Uri $bootstrapZip -Method Head -UseBasicParsing
         $remoteLastModified = [datetime]::ParseExact($remoteFile.Headers.'Last-Modified', 'ddd, dd MMM yyyy HH:mm:ss \G\M\T', [System.Globalization.CultureInfo]::InvariantCulture)
         $remoteSize = $remoteFile.Headers.'Content-Length'
+        $currentTime = Get-Date
+        $daysOld = ($currentTime - $remoteLastModified).TotalDays 
+        if ($daysOld -gt 14) {
+            Write-CurrentTime; Write-Host "  WARNING: The online bootstrap file is $([Math]::Round($daysOld)) days old...`nThe synchronization might not be fast enough before the node gets banned.`nConsider to run 'protx update_service' command if you experience a PoSe Ban when sync..." -ForegroundColor Yellow
+        } else {
+            Write-CurrentTime; Write-Host "  The online bootstrap file is $([Math]::Round($daysOld)) days old, good..." -ForegroundColor Yellow
+        } 
         if ($localFile.LastWriteTime -ge $remoteLastModified -and $localFile.Length -eq $remoteSize) {
             Write-CurrentTime; Write-Host "  The bootstrap.zip file is up to date." -ForegroundColor Yellow
             Write-CurrentTime; Write-Host "  Local Bootstrap    : Size: $(("{0:N2}" -f ($localFile.Length / 1GB))) GB, Date: $($localFile.LastWriteTime)" -ForegroundColor Yellow
