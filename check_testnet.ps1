@@ -1,7 +1,6 @@
 # URLs for raptoreum explorers. Main and backup one.
 $url = @( 'https://testnet.raptoreum.com/', 'https://raptor.mopsus.com/' )   # Testnet
 $url_ID = 0
-
 #$bootstrapZip = "https://bootstrap.raptoreum.com/testnet-bootstraps/testnet-bootstrap-1.3.17.02rc.zip"                        #Official testnet bootstrap (blockheight 98K)
 $bootstrapZip = "https://github.com/wizz13150/Raptoreum_SmartNode/releases/download/SmartNode_Install/bootstrap-testnet.zip"   #wizz's bootstrap (blockheight 172K)
 $raptoreumCLI = $env:traptoreumcli
