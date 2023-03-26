@@ -1,5 +1,4 @@
 @echo off
-:menu
 echo.
 echo  =================================================================
 echo  ^|  (       *             (               )     )  (             ^|
@@ -13,6 +12,7 @@ echo  ^| ^|___/ ^|_^|  ^|_^|/_/ \_\ ^|_^|_\  ^|_^|   ^|_^|\_^| \___/ ^|___/ ^|__
 echo  ^|                                                               ^|
 echo  =================================================================
 echo.
+:choice
 echo [1] Install a Mainnet Smartnode
 echo [2] Install a Testnet Smartnode
 echo.
@@ -29,7 +29,7 @@ if %choice%==1 (
 ) else (
     echo Invalid choice. Please enter 1 or 2...
     echo.
-    goto :menu
+    goto :choice
 )
 
 set USER_PROFILE=%USERPROFILE%
