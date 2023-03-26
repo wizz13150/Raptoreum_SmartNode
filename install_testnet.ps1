@@ -368,25 +368,37 @@ function Bootstrap-Chain {
 function Chain-Backup {
     Write-CurrentTime; Write-Host "  Creating bootstrap script..." -ForegroundColor Cyan
     $chainBackupScript = @"
-`$bootstrapZipPath = $bootstrapZipPath
+`$bootstrapZipPath = "$bootstrapZipPath"
 `$configDir = "`$env:APPDATA\RaptoreumSmartNode"
-Move-Item -Path "`$env:USERPROFILE\check_testnet.ps1" -Destination "`$env:USERPROFILE\temp.ps1"
+Write-Host "(`$((Get-Date).ToString('yyyy-MM-dd HH:mm:ss')))  Creating blockchain backup (bootstrap)..." -ForegroundColor Yellow
+Move-Item -Path "`$env:USERPROFILE\check_testnet.ps1" -Destination "`$env:USERPROFILE\temp.ps1" -ErrorAction SilentlyContinue -Force
 Stop-Service -Name $serviceName -ErrorAction SilentlyContinue -Force
 Start-Sleep -Seconds 2
 # Check if the wallet process is running and kill it if it is
 `$walletProcess = Get-Process -Name "raptoreumd" -ErrorAction SilentlyContinue
 if (`$walletProcess) {
-    Write-Host " Stopping the running Raptoreum process..." -ForegroundColor Yellow
+    Write-Host "(`$((Get-Date).ToString('yyyy-MM-dd HH:mm:ss')))  Stopping the running Raptoreum process..." -ForegroundColor Yellow
     Stop-Process `$walletProcess.Id -Force
 } else {
-    Write-Host " No Raptoreum process detected..." -ForegroundColor Yellow
+    Write-Host "(`$((Get-Date).ToString('yyyy-MM-dd HH:mm:ss')))  No Raptoreum process detected..." -ForegroundColor Green
 }
 Start-Sleep -Seconds 2
 Remove-Item -Path `$bootstrapZipPath -ErrorAction SilentlyContinue
-Compress-Archive -Path "`$configDir\nodetest\blocks", "`$configDir\nodetest\chainstate", "`$configDir\nodetest\evodb", "`$configDir\nodetest\llmq" -DestinationPath `$bootstrapZipPath
-Write-Host "(`$(Get-Date).ToString("yyyy-MM-dd HH:mm:ss"))  Bootstrap created"
-Start-Service -Name $serviceName -ErrorAction SilentlyContinue -Force
-Move-Item -Path "`$env:USERPROFILE\temp.ps1" -Destination "`$env:USERPROFILE\check_testnet.ps1"
+`$zipProgram = ""
+`$7zipKey = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\7zFM.exe"
+if (Test-Path `$7zipKey) {
+    `$zipProgram = (Get-ItemProperty `$7zipKey).'Path' + "7z.exe"
+}
+if (`$zipProgram) {
+    Write-CurrentTime; Write-Host "  7-Zip detected, using 7-Zip to compress the bootstrap. Faster..." -ForegroundColor Cyan
+    & "`$zipProgram" a -tzip `$bootstrapZipPath "`$configDir\nodetest\blocks" "`$configDir\nodetest\chainstate" "`$configDir\nodetest\evodb" "`$configDir\nodetest\llmq"
+} else {
+    Write-CurrentTime; Write-Host "  7-Zip not detected, using 'Expand-Archive' to compress the bootstrap. Slower..." -ForegroundColor Cyan
+    Compress-Archive -Path "`$configDir\nodetest\blocks", "`$configDir\nodetest\chainstate", "`$configDir\nodetest\evodb", "`$configDir\nodetest\llmq" -DestinationPath `$bootstrapZipPath
+}
+Write-Host "(`$((Get-Date).ToString('yyyy-MM-dd HH:mm:ss')))  Bootstrap created" -ForegroundColor Green
+Start-Service -Name $serviceName -ErrorAction SilentlyContinue
+Move-Item -Path "`$env:USERPROFILE\temp.ps1" -Destination "`$env:USERPROFILE\check_testnet.ps1" -ErrorAction SilentlyContinue -Force
 "@
     Set-Content -Path "$env:USERPROFILE\chainbackup_testnet.ps1" -Value $chainBackupScript
     Write-CurrentTime; Write-Host "  Script created: $env:USERPROFILE\chainbackup_testnet.ps1..." -ForegroundColor Yellow
