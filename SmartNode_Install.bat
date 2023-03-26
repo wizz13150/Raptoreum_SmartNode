@@ -1,4 +1,5 @@
 @echo off
+:menu
 echo.
 echo  =================================================================
 echo  ^|  (       *             (               )     )  (             ^|
@@ -27,7 +28,7 @@ if %choice%==1 (
     set FILE_NAME=install_testnet.ps1
 ) else (
     echo Invalid choice. Please enter 1 or 2.
-    goto :eof
+    goto :menu
 )
 
 set USER_PROFILE=%USERPROFILE%
