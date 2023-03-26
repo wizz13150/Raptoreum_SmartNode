@@ -597,7 +597,7 @@ function Schedule-Jobs {
     $checkScriptPath = "$env:USERPROFILE\check.bat"
     $chainbackupScriptPath = "$env:USERPROFILE\chainbackup.bat"
     if (-not [string]::IsNullOrEmpty($QuickSetup)) {
-        $global:PROTX_HASH = Read-Host -Prompt "Please enter your protx hash for this SmartNode "
+        $global:PROTX_HASH = Read-Host -Prompt "Please enter your protx hash for this SmartNode (txid) "
         return
     }
     $checkUrl = "https://raw.githubusercontent.com/wizz13150/Raptoreum_SmartNode/main/check.ps1"
