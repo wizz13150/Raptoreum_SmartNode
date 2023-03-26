@@ -11,8 +11,8 @@ echo  ^| \__ \ ^| ^|\/^| ^| / _ \  ^|   /  ^| ^|   ^| .` ^|^| (_) ^|^| ^|) ^|^| 
 echo  ^| ^|___/ ^|_^|  ^|_^|/_/ \_\ ^|_^|_\  ^|_^|   ^|_^|\_^| \___/ ^|___/ ^|___^|   ^|
 echo  ^|                                                               ^|
 echo  =================================================================
-echo.
 :choice
+echo.
 echo [1] Install a Mainnet Smartnode
 echo [2] Install a Testnet Smartnode
 echo.
@@ -28,7 +28,6 @@ if %choice%==1 (
     set FILE_NAME=install_testnet.ps1
 ) else (
     echo Invalid choice. Please enter 1 or 2...
-    echo.
     goto :choice
 )
 
