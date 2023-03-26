@@ -373,7 +373,7 @@ function Bootstrap-Chain {
         $currentTime = Get-Date
         $daysOld = ($currentTime - $remoteLastModified).TotalDays 
         if ($daysOld -gt 14) {
-            Write-CurrentTime; Write-Host "  WARNING: The online bootstrap file is $([Math]::Round($daysOld)) days old...`nThe synchronization might not be fast enough before the node gets banned.`nConsider to run 'protx update_service' command if you experience a PoSe Ban when sync..." -ForegroundColor Cyan
+            Write-CurrentTime; Write-Host "  WARNING: The online bootstrap file is $([Math]::Round($daysOld)) days old...`nThe synchronization might not be fast enough before the node gets banned.`nConsider running 'protx update_service' command if you experience a PoSe Ban when sync..." -ForegroundColor Cyan
         } else {
             Write-CurrentTime; Write-Host "  The online bootstrap file is $([Math]::Round($daysOld)) days old, good..." -ForegroundColor Yellow
         } 
