@@ -391,10 +391,10 @@ if (Test-Path `$7zipKey) {
 }
 if (`$zipProgram) {
     Write-Host "(`$((Get-Date).ToString('yyyy-MM-dd HH:mm:ss')))  7-Zip detected, using 7-Zip to compress the bootstrap. Faster..." -ForegroundColor Cyan
-    & "`$zipProgram" a -tzip `$bootstrapZipPath "`$configDir\nodetest\blocks" "`$configDir\nodetest\chainstate" "`$configDir\nodetest\evodb" "`$configDir\nodetest\llmq"
+    & "`$zipProgram" a -tzip `$bootstrapZipPath "`$configDir\nodetest\blocks" "`$configDir\nodetest\chainstate" "`$configDir\nodetest\evodb" "`$configDir\nodetest\llmq" "`$configDir\nodetest\powcache.dat"
 } else {
     Write-Host "(`$((Get-Date).ToString('yyyy-MM-dd HH:mm:ss')))  7-Zip not detected, using 'Expand-Archive' to compress the bootstrap. Slower..." -ForegroundColor Cyan
-    Compress-Archive -Path "`$configDir\nodetest\blocks", "`$configDir\nodetest\chainstate", "`$configDir\nodetest\evodb", "`$configDir\nodetest\llmq" -DestinationPath `$bootstrapZipPath
+    Compress-Archive -Path "`$configDir\nodetest\blocks", "`$configDir\nodetest\chainstate", "`$configDir\nodetest\evodb", "`$configDir\nodetest\llmq", "`$configDir\nodetest\powcache.dat" -DestinationPath `$bootstrapZipPath
 }
 Write-Host "(`$((Get-Date).ToString('yyyy-MM-dd HH:mm:ss')))  Bootstrap created" -ForegroundColor Green
 Start-Service -Name $serviceName -ErrorAction SilentlyContinue
