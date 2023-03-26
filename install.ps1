@@ -374,6 +374,14 @@ function Bootstrap-Chain {
             Write-CurrentTime; Write-Host "  The bootstrap.zip file is up to date." -ForegroundColor Yellow
             Write-CurrentTime; Write-Host "  Local Bootstrap    : Size: $(("{0:N2}" -f ($localFile.Length / 1GB))) GB, Date: $($localFile.LastWriteTime)" -ForegroundColor Yellow
             Write-CurrentTime; Write-Host "  Online Bootstrap   : Size: $(("{0:N2}" -f ($remoteSize / 1GB))) GB, Date: $($remoteLastModified)" -ForegroundColor Yellow
+            # Warning if bootstrap is old
+            $currentTime = Get-Date
+            $localOld = [Math]::Round(($currentTime - $localFile.LastWriteTime).TotalDays)
+            if ($localOld -gt 14) {
+                Write-CurrentTime; Write-Host "  WARNING: The local bootstrap file is $localOld days old...`nThe synchronization might not be fast enough before the node gets banned.`nConsider running 'protx update_service' command if you experience a PoSe Ban when sync..." -ForegroundColor Cyan
+            } else {
+                Write-CurrentTime; Write-Host "  The local bootstrap file is $localOld days old, good..." -ForegroundColor Yellow
+            } 
             Check-BootstrapZipChecksum
             Extract-Bootstrap
         } 
@@ -383,11 +391,11 @@ function Bootstrap-Chain {
             Write-CurrentTime; Write-Host "  Online Bootstrap   : Size: $(("{0:N2}" -f ($remoteSize / 1GB))) GB, Date: $($remoteLastModified)" -ForegroundColor Yellow
             # Warning if bootstrap is old
             $currentTime = Get-Date
-            $daysOld = ($currentTime - $remoteLastModified).TotalDays 
-            if ($daysOld -gt 14) {
-                Write-CurrentTime; Write-Host "  WARNING: The online bootstrap file is $([Math]::Round($daysOld)) days old...`nThe synchronization might not be fast enough before the node gets banned.`nConsider running 'protx update_service' command if you experience a PoSe Ban when sync..." -ForegroundColor Cyan
+            $onlineOld = [Math]::Round(($currentTime - $remoteLastModified).TotalDays)
+            if ($onlineOld -gt 14) {
+                Write-CurrentTime; Write-Host "  WARNING: The online bootstrap file is $onlineOld days old...`nThe synchronization might not be fast enough before the node gets banned.`nConsider running 'protx update_service' command if you experience a PoSe Ban when sync..." -ForegroundColor Cyan
             } else {
-                Write-CurrentTime; Write-Host "  The online bootstrap file is $([Math]::Round($daysOld)) days old, good..." -ForegroundColor Yellow
+                Write-CurrentTime; Write-Host "  The online bootstrap file is $onlineOld days old, good..." -ForegroundColor Yellow
             } 
             if (-not (Test-Path -Path "$env:APPDATA\bootstrap")) {
                 New-Item -ItemType Directory -Path "$env:APPDATA\bootstrap" -ErrorAction SilentlyContinue -Force | Out-Null
