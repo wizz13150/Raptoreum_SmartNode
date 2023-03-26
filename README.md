@@ -35,6 +35,9 @@ powershell -ExecutionPolicy Bypass -c "Invoke-WebRequest -Uri https://raw.github
 - Or you can download the Batch file in the [Releases Section](https://github.com/wizz13150/Raptoreum_SmartNode/releases)
 
 
+![image](https://user-images.githubusercontent.com/22177081/227793039-ec287d38-7140-4c02-952f-75c29b439eff.png)
+
+
 > ℹ Info: Script will run as admin. Script will ask for BLS PrivKey(operatorSecret) and ProtXHash(txid) that you get from the protx quick_setup/bls generate command. So have it ready. This will also create a script to update binaries.
 
 <br>
