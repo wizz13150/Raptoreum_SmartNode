@@ -247,14 +247,14 @@ function Create-Conf {
         do {
             $global:smartnodeblsprivkey = Read-Host -Prompt "Enter your SmartNode BLS Privkey (operatorSecret) "
             if ($global:smartnodeblsprivkey.Length -ne 64) {
-                Write-Host "  The BLS must be exactly 64 characters long, please check your BLS..." -ForegroundColor Red
+                Write-Host "  The BLS must be exactly 64 characters long, please check your BLS..." -ForegroundColor Yellow
             }
         } until ($global:smartnodeblsprivkey.Length -eq 64)
         return
     }
     if (Test-Path $configPath) {
         Write-CurrentTime; Write-Host "  Existing conf file found backing up to Raptoreum_testnet.old ..." -ForegroundColor Yellow
-        Move-Item -Path $configPath -Destination "$configDir\Raptoreum_testnet.old" -Force
+        Move-Item -Path $configPath -Destination "$configDir\nodetest\Raptoreum_testnet.old" -Force
     }
     $rpcUser = -join ((65..90) + (97..122) | Get-Random -Count 8 | % {[char]$_})
     $password = -join ((65..90) + (97..122) | Get-Random -Count 20 | % {[char]$_})
@@ -268,7 +268,7 @@ function Create-Conf {
     }
     $configContent = @"
 [test]
-rpcUser=$rpcUser
+rpcuser=$rpcUser
 rpcpassword=$password
 rpcallowip=127.0.0.1
 rpcbind=127.0.0.1
@@ -620,10 +620,10 @@ $env:USERPROFILE\check_testnet.log {
 }
 "@
     Write-CurrentTime; Write-Host "  Configuring logrotate function for debug log..." -ForegroundColor Yellow
-    $logrotateConfigPath = "$env:USERPROFILE\rtmdebuglogrotate_testnet.conf"
+    $logrotateConfigPath = "$env:USERPROFILE\LogrotateWin\Content\rtmdebuglogrotate_testnet.conf"
     if (Test-Path $logrotateConfigPath) {
         Write-CurrentTime; Write-Host "  Existing log rotate conf found, backing up to ~/rtmdebuglogrotate.old ..." -ForegroundColor Yellow
-        Move-Item $logrotateConfigPath "$env:USERPROFILE\rtmdebuglogrotate_testnet.old" -ErrorAction SilentlyContinue -Force
+        Move-Item $logrotateConfigPath "$env:USERPROFILE\LogrotateWin\Content\rtmdebuglogrotate_testnet.old" -ErrorAction SilentlyContinue -Force
     }
     $logrotateConfig | Out-File -FilePath $logrotateConfigPath -Encoding utf8 -Force
     Start-Sleep -Seconds 1
