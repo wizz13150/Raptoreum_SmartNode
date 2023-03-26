@@ -15,12 +15,13 @@ if (-not (IsAdministrator)) {
 }
 
 # Script vars
-#$BOOTSTRAP_ZIP = "https://bootstrap.raptoreum.com/testnet-bootstraps/testnet-bootstrap-1.3.17.02rc.zip"                        #Official testnet bootstrap (blockheight 98K)
-$BOOTSTRAP_ZIP = "https://github.com/wizz13150/Raptoreum_SmartNode/releases/download/Raptoreum_SmartNode/bootstrap-testnet.zip" #wizz's bootstrap (blockheight 172K)
-$CONFIG_DIR = "$env:APPDATA\RaptoreumSmartnode"
-$COIN_PATH = "$env:ProgramFiles (x86)\RaptoreumCore"
-$configPath = Join-Path $CONFIG_DIR "nodetest\raptoreum_testnet.conf"
-$bootstrapZipPath = Join-Path $env:APPDATA "\bootstrap\bootstrap-testnet.zip"
+#$bootstrapZip = "https://bootstrap.raptoreum.com/testnet-bootstraps/testnet-bootstrap-1.3.17.02rc.zip"                        #Official testnet bootstrap (blockheight 98K)
+$bootstrapZip = "https://github.com/wizz13150/Raptoreum_SmartNode/releases/download/Raptoreum_SmartNode/bootstrap-testnet.zip" #wizz's bootstrap (blockheight 177K)
+$configDir = "$env:APPDATA\RaptoreumSmartnode"
+$coinPath = "$env:ProgramFiles (x86)\RaptoreumCore"
+$configPath = "$configDir\nodetest\raptoreum_testnet.conf"
+$bootstrapZipPath = "$env:APPDATA\bootstrap\bootstrap-testnet.zip"
+$serviceName = "RTMServiceTestnet"
 
 
 Write-Host "===========================================================" -ForegroundColor Yellow 
@@ -37,13 +38,15 @@ Write-Host "====================================================================
 Write-Host " Testnet Node setup starting, press [CTRL-C] to cancel..." -ForegroundColor Cyan 
 Start-Sleep -Seconds 1
 
-# Because windows.. Disable sleep & cie.. Always up
-powercfg -setactive 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c
-powercfg -change -standby-timeout-ac 0
-powercfg -change -standby-timeout-dc 0
-powercfg -change -disk-timeout-ac 0
-powercfg -change -disk-timeout-dc 0
-powercfg -h off
+
+function KeepWindows-Up {
+    powercfg -setactive 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c
+    powercfg -change -standby-timeout-ac 0
+    powercfg -change -standby-timeout-dc 0
+    powercfg -change -disk-timeout-ac 0
+    powercfg -change -disk-timeout-dc 0
+    powercfg -h off
+}
 
 function Write-CurrentTime {
     Write-Host ('[' + (Get-Date).ToString("HH:mm:ss") + ']') -NoNewline
@@ -51,25 +54,26 @@ function Write-CurrentTime {
 
 function Wipe-Clean {
     Write-CurrentTime; Write-Host "  Removing any previous instance of a testnet Smartnode (with this script)..." -ForegroundColor Yellow
-    Stop-Service -Name "RTMServiceTestnet" -ErrorAction SilentlyContinue -Force
-    if (Get-Service -Name "RTMServiceTestnet" -ErrorAction SilentlyContinue) {
-        sc.exe delete "RTMServiceTestnet" | Out-Null
+    Stop-Service -Name $serviceName -ErrorAction SilentlyContinue -Force
+    if (Get-Service -Name $serviceName -ErrorAction SilentlyContinue) {
+        sc.exe delete $serviceName | Out-Null
     }
-    Remove-Item -Path $CONFIG_DIR\nodetest -Recurse -ErrorAction SilentlyContinue -Force
-    Remove-Item -Path $COIN_PATH -Recurse -ErrorAction SilentlyContinue -Force
+    Remove-Item -Path $configDir\nodetest -Recurse -ErrorAction SilentlyContinue -Force
+    Remove-Item -Path $coinPath -Recurse -ErrorAction SilentlyContinue -Force
     [Environment]::SetEnvironmentVariable("traptoreumcli", "$null", "Machine")
-}
-$files = @(
-    "$env:USERPROFILE\update_testnet.ps1", "$env:USERPROFILE\check_testnet.ps1",
-    "$env:USERPROFILE\check_testnet.bat", "$env:USERPROFILE\chainbackup_testnet.ps1",
-    "$env:USERPROFILE\chainbackup_testnet.bat", "$env:USERPROFILE\RTM-MOTD_testnet.txt",
-    "$env:USERPROFILE\SmartNodeBash_testnet.bat", "$env:USERPROFILE\rtmdebuglogrotate_testnet.conf",
-    "$env:UserProfile\height_testnet.tmp", "$env:UserProfile\prev_stuck_testnet.tmp",
-    "$env:UserProfile\was_stuck_testnet.tmp", "$env:UserProfile\pose_score_testnet.tmp"
-) 
-foreach ($file in $files) {
-    if (Test-Path $file) {
-        Remove-Item -Path $file -ErrorAction SilentlyContinue -Force
+
+    $files = @(
+        "$env:USERPROFILE\update_testnet.ps1", "$env:USERPROFILE\check_testnet.ps1",
+        "$env:USERPROFILE\check_testnet.bat", "$env:USERPROFILE\chainbackup_testnet.ps1",
+        "$env:USERPROFILE\chainbackup_testnet.bat", "$env:USERPROFILE\RTM-MOTD_testnet.txt",
+        "$env:USERPROFILE\SmartNodeBash_testnet.bat", "$env:USERPROFILE\rtmdebuglogrotate_testnet.conf",
+        "$env:UserProfile\height_testnet.tmp", "$env:UserProfile\prev_stuck_testnet.tmp",
+        "$env:UserProfile\was_stuck_testnet.tmp", "$env:UserProfile\pose_score_testnet.tmp"
+    ) 
+    foreach ($file in $files) {
+        if (Test-Path $file) {
+            Remove-Item -Path $file -ErrorAction SilentlyContinue -Force
+        }
     }
 }
 
@@ -82,7 +86,7 @@ function Environment-Variable {
     if (-not ($envPath.Contains($newPath))) {
         [Environment]::SetEnvironmentVariable("Path", "$envPath;$newPath", "Machine")
     }
-    $global:CLI = "`"$((Join-Path $COIN_PATH "raptoreum-cli.exe"))`" -testnet -datadir=`"$CONFIG_DIR`" -conf=`"$CONFIG_DIR\nodetest\raptoreum_testnet.conf`""
+    $global:CLI = "`"$coinPath\raptoreum-cli.exe`" -testnet -datadir=`"$configDir`" -conf=`"$configDir\nodetest\raptoreum_testnet.conf`""
     [Environment]::SetEnvironmentVariable("traptoreumcli", "$CLI", "Machine")
 }
 
@@ -92,7 +96,7 @@ function Install-7Zip {
         Write-CurrentTime; Write-Host "  7-Zip is already installed..." -ForegroundColor Yellow
     } else {
         $7zipInstallerUrl = "https://www.7-zip.org/a/7z1900-x64.msi"
-        $7zipInstallerPath = Join-Path $env:USERPROFILE "7z_installer.msi"
+        $7zipInstallerPath = "$env:USERPROFILE\7z_installer.msi"
         Write-CurrentTime; Write-Host "  Downloading 7-Zip installer..." -ForegroundColor Cyan
         Start-BitsTransfer -Source $7zipInstallerUrl -Destination $7zipInstallerPath -DisplayName "Downloading 7-Zip installer from $7zipInstallerUrl"
         Write-CurrentTime; Write-Host "  Installing 7-Zip..." -ForegroundColor Yellow
@@ -111,7 +115,7 @@ function Install-7Zip {
 
 function Extract-Bootstrap {
     Write-CurrentTime; Write-Host "  Extracting bootstrap from: $bootstrapZipPath..." -ForegroundColor Yellow
-    Write-CurrentTime; Write-Host "  Extracting bootstrap to  : $CONFIG_DIR\nodetest..." -ForegroundColor Yellow
+    Write-CurrentTime; Write-Host "  Extracting bootstrap to  : $configDir\nodetest..." -ForegroundColor Yellow
     $zipProgram = ""
     $7zipKey = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\7zFM.exe"
     if (Test-Path $7zipKey) {
@@ -119,10 +123,10 @@ function Extract-Bootstrap {
     }
     if ($zipProgram) {
         Write-CurrentTime; Write-Host "  7-Zip detected, using 7-Zip to extract the bootstrap. Faster..." -ForegroundColor Cyan
-        & "$zipProgram" x $bootstrapZipPath -o"$CONFIG_DIR\nodetest" -y
+        & "$zipProgram" x $bootstrapZipPath -o"$configDir\nodetest" -y
     } else {
         Write-CurrentTime; Write-Host "  7-Zip not detected, using 'Expand-Archive' to extract the bootstrap. Slower..." -ForegroundColor Cyan
-        Expand-Archive -Path $bootstrapZipPath -DestinationPath "$CONFIG_DIR\nodetest" -Force -ErrorAction SilentlyContinue
+        Expand-Archive -Path $bootstrapZipPath -DestinationPath "$configDir\nodetest" -Force -ErrorAction SilentlyContinue
     }
     Start-Sleep -Seconds 1
 }
@@ -140,21 +144,28 @@ function Install-NSSM {
 }
 
 function Install-LogrotateWin {
+    Write-CurrentTime; Write-Host "  Installing LogrotateWin..." -ForegroundColor Cyan
     $LogrotateWinUrl = "https://sourceforge.net/projects/logrotatewin/files/latest/download"
     $LogrotateWinPath = "$env:TEMP\logrotatewin.zip"
     $LogrotateWinExtractPath = "$env:UserProfile\LogrotateWin"
-    $LogrotateWinExtracted = Test-Path -Path "$LogrotateWinExtractPath\LogrotateWin.exe"
-    if ($LogrotateWinExtracted) {
+    $LogrotateWinInstaller = "$LogrotateWinExtractPath\logrotateSetup.exe"
+    $LogrotateWinExtracted = Test-Path -Path "$LogrotateWinExtractPath\Logrotate.exe"
+    if ($LogrotateWinExtracted) 
+    {
         Write-CurrentTime; Write-Host "  LogrotateWin already installed..." -ForegroundColor Yellow
     } else {
         Write-CurrentTime; Write-Host "  Downloading and installing LogrotateWin ..." -ForegroundColor Cyan
         Start-BitsTransfer -Source $LogrotateWinUrl -Destination $LogrotateWinPath -DisplayName "Downloading LogrotateWin from $LogrotateWinUrl"
         Write-CurrentTime; Write-Host "  Extracting LogrotateWin to $LogrotateWinExtractPath" -ForegroundColor Yellow
         Expand-Archive -Path $LogrotateWinPath -DestinationPath $LogrotateWinExtractPath -ErrorAction SilentlyContinue -Force
+        .$LogrotateWinInstaller /s /v"INSTALLDIR=$LogrotateWinExtractPath" /V"AgreeToLicense=yes" /V"/qn"
         Write-CurrentTime; Write-Host "  LogrotateWin installed successfully..." -ForegroundColor Yellow
+        Write-CurrentTime; Write-Host "  Removing LogrotateWin Zip..." -ForegroundColor Yellow
+        Remove-Item -Path $LogrotateWinPath -ErrorAction SilentlyContinue -Force
     }
     Start-Sleep -Seconds 1
 }
+
 
 function Create-Shortcuts {
     # Create SmartNodeBash.lnk
@@ -185,7 +196,7 @@ function Create-Shortcuts {
 }
 
 
-$global:SSHPORT = ""
+$global:sshPort = ""
 function Get-SSHPort {
     Write-CurrentTime; Write-Host "  Detecting SSH port being used..." -ForegroundColor Yellow
     $sshdConfigPath = "$env:ProgramData\ssh\sshd_config"
@@ -193,34 +204,34 @@ function Get-SSHPort {
         $content = Get-Content $sshdConfigPath
         $portLine = $content | Where-Object { $_ -match "^Port\s+\d+" }    
         if ($portLine -ne $null) {
-            $global:SSHPORT = $portLine -replace "^Port\s+", ""
-            Write-CurrentTime; Write-Host "  SSH Port: $($global:SSHPORT)" -ForegroundColor Yellow
+            $global:sshPort = $portLine -replace "^Port\s+", ""
+            Write-CurrentTime; Write-Host "  SSH Port: $($global:sshPort)" -ForegroundColor Yellow
         } else {
-            $global:SSHPORT = 22
-            Write-CurrentTime; Write-Host "  No port found in the configuration file. Default SSH port is $($global:SSHPORT)." -ForegroundColor Yellow
+            $global:sshPort = 22
+            Write-CurrentTime; Write-Host "  No port found in the configuration file. Default SSH port is $($global:sshPort)." -ForegroundColor Yellow
         }
     } else {
-        $global:SSHPORT = 22
-        Write-CurrentTime; Write-Host "  OpenSSH server configuration file not found. Default SSH port is $($global:SSHPORT)." -ForegroundColor Yellow
+        $global:sshPort = 22
+        Write-CurrentTime; Write-Host "  OpenSSH server configuration file not found. Default SSH port is $($global:sshPort)." -ForegroundColor Yellow
     }
     do {
-        $useSSH = Read-Host -Prompt "Detected SSH port is $($global:SSHPORT), is this correct? (y/n) "
+        $useSSH = Read-Host -Prompt "Detected SSH port is $($global:sshPort), is this correct? (y/n) "
         if ($useSSH -eq "n") {
-            $global:SSHPORT = Read-Host -Prompt "Enter SSH port "
+            $global:sshPort = Read-Host -Prompt "Enter SSH port "
         }
     } while ($useSSH -ne "y" -and $useSSH -ne "n" -and $useSSH -ne "")
     Start-Sleep -Seconds 1
 }
 
-$global:WANIP = ""
+$global:wanIP = ""
 function Confirm-IP {
     Write-CurrentTime; Write-Host "  Detecting IP address being used..." -ForegroundColor Yellow
     Start-Sleep -Seconds 1
-    $global:WANIP = Invoke-WebRequest -Uri "http://ipecho.net/plain" -UseBasicParsing | Select-Object -ExpandProperty Content
+    $global:wanIP = Invoke-WebRequest -Uri "http://ipecho.net/plain" -UseBasicParsing | Select-Object -ExpandProperty Content
     do {
-        $useDetectedIP = Read-Host -Prompt "Detected IP address is $($global:WANIP), is this correct? (y/n) "
+        $useDetectedIP = Read-Host -Prompt "Detected IP address is $($global:wanIP), is this correct? (y/n) "
         if ($useDetectedIP -eq "n") {
-            $global:WANIP = Read-Host -Prompt "Enter IP address "
+            $global:wanIP = Read-Host -Prompt "Enter IP address "
         }
     } while ($useDetectedIP -ne "y" -and $useDetectedIP -ne "n" -and $useDetectedIP -ne "")
     Start-Sleep -Seconds 1
@@ -232,31 +243,33 @@ function Create-Conf {
     param(
         [string]$QuickSetup
     )
-    # Force user to provide BLS key.
     if (-not [string]::IsNullOrEmpty($QuickSetup)) {
-        while ([string]::IsNullOrEmpty($global:smartnodeblsprivkey)) {
-            $global:smartnodeblsprivkey = Read-Host -Prompt "Enter your SmartNode BLS Privkey "
-        }
+        do {
+            $global:smartnodeblsprivkey = Read-Host -Prompt "Enter your SmartNode BLS Privkey (operatorSecret) "
+            if ($global:smartnodeblsprivkey.Length -ne 64) {
+                Write-Host "  The BLS must be exactly 64 characters long, please check your BLS..." -ForegroundColor Red
+            }
+        } until ($global:smartnodeblsprivkey.Length -eq 64)
         return
     }
     if (Test-Path $configPath) {
         Write-CurrentTime; Write-Host "  Existing conf file found backing up to Raptoreum_testnet.old ..." -ForegroundColor Yellow
-        Move-Item -Path $configPath -Destination "$CONFIG_DIR\Raptoreum_testnet.old" -Force
+        Move-Item -Path $configPath -Destination "$configDir\Raptoreum_testnet.old" -Force
     }
-    $RPCUSER = -join ((65..90) + (97..122) | Get-Random -Count 8 | % {[char]$_})
-    $PASSWORD = -join ((65..90) + (97..122) | Get-Random -Count 20 | % {[char]$_})
+    $rpcUser = -join ((65..90) + (97..122) | Get-Random -Count 8 | % {[char]$_})
+    $password = -join ((65..90) + (97..122) | Get-Random -Count 20 | % {[char]$_})
     Write-CurrentTime; Write-Host "  Creating Conf File..." -ForegroundColor Cyan
     Start-Sleep -Seconds 1
-    if (-not (Test-Path $CONFIG_DIR)) {
-        New-Item -ItemType Directory -Path $CONFIG_DIR | Out-Null
-        if (-not (Test-Path "$CONFIG_DIR\nodetest")) {            
-            New-Item -ItemType Directory -Path "$CONFIG_DIR\nodetest" | Out-Null
+    if (-not (Test-Path $configDir)) {
+        New-Item -ItemType Directory -Path $configDir | Out-Null
+        if (-not (Test-Path "$configDir\nodetest")) {            
+            New-Item -ItemType Directory -Path "$configDir\nodetest" | Out-Null
         }
     }
     $configContent = @"
 [test]
-rpcuser=$RPCUSER
-rpcpassword=$PASSWORD
+rpcUser=$rpcUser
+rpcpassword=$password
 rpcallowip=127.0.0.1
 rpcbind=127.0.0.1
 port=10229
@@ -265,7 +278,7 @@ testnet=1
 listen=1
 txindex=1
 smartnodeblsprivkey=$global:smartnodeblsprivkey
-externalip=$global:WANIP
+externalip=$global:wanIP
 maxconnections=125
 dbcache=1024
 onlynet=ipv4
@@ -303,30 +316,30 @@ function Install-Bins {
                 Write-CurrentTime; Write-Host "  Please enter 'y' or 'n'..." -ForegroundColor Yellow
             }
         } while ($confirmation -ne "y" -and $confirmation -ne "n")
-        if (-not (Test-Path $COIN_PATH)) {
-            New-Item -Path $COIN_PATH -ItemType Directory | Out-Null
+        if (-not (Test-Path $coinPath)) {
+            New-Item -Path $coinPath -ItemType Directory | Out-Null
         }
         Write-CurrentTime; Write-Host "  Downloading latest binaries ($latestVersion)..." -ForegroundColor Yellow
-        Start-BitsTransfer -Source $walletUrl -Destination "$COIN_PATH\raptoreum.zip" -DisplayName "Downloading binaries from $walletUrl"
+        Start-BitsTransfer -Source $walletUrl -Destination "$coinPath\raptoreum.zip" -DisplayName "Downloading binaries from $walletUrl"
         Write-CurrentTime; Write-Host "  Unzipping..." -ForegroundColor Yellow
-        Expand-Archive -Path (Join-Path $COIN_PATH "raptoreum.zip") -DestinationPath $COIN_PATH -ErrorAction SilentlyContinue -Force
+        Expand-Archive -Path "$coinPath\raptoreum.zip" -DestinationPath $coinPath -ErrorAction SilentlyContinue -Force
         Write-CurrentTime; Write-Host "  Removing..." -ForegroundColor Yellow
-        Remove-Item -Path (Join-Path $COIN_PATH "raptoreum.zip") -Recurse -ErrorAction SilentlyContinue -Force
+        Remove-Item -Path "$coinPath\raptoreum.zip" -Recurse -ErrorAction SilentlyContinue -Force
     } else {
-        if (-not (Test-Path $COIN_PATH)) {
-            New-Item -Path $COIN_PATH -ItemType Directory| Out-Null
+        if (-not (Test-Path $coinPath)) {
+            New-Item -Path $coinPath -ItemType Directory| Out-Null
         }
         Write-CurrentTime; Write-Host "  Downloading latest binaries ($latestVersion)..." -ForegroundColor Yellow
-        Start-BitsTransfer -Source $walletUrl -Destination ($COIN_PATH + "\raptoreum.zip") -DisplayName "Downloading binaries from $walletUrl"
+        Start-BitsTransfer -Source $walletUrl -Destination "$coinPath\raptoreum.zip" -DisplayName "Downloading binaries from $walletUrl"
         Write-CurrentTime; Write-Host "  Unzipping..." -ForegroundColor Yellow
-        Expand-Archive -Path (Join-Path $COIN_PATH "raptoreum.zip") -DestinationPath $COIN_PATH -ErrorAction SilentlyContinue -Force
+        Expand-Archive -Path "$coinPath\raptoreum.zip" -DestinationPath $coinPath -ErrorAction SilentlyContinue -Force
         Write-CurrentTime; Write-Host "  Removing..." -ForegroundColor Yellow
-        Remove-Item -Path (Join-Path $COIN_PATH "raptoreum.zip") -Recurse -ErrorAction SilentlyContinue -Force
+        Remove-Item -Path "$coinPath\raptoreum.zip" -Recurse -ErrorAction SilentlyContinue -Force
     }
     Start-Sleep -Seconds 1
 }
 
-$global:BOOTSTRAP_ANS = ""
+$global:bootstrapAns = ""
 function Bootstrap-Chain {
         # If $QuickSetup is provided, just ask about bootstrap.
     param(
@@ -336,23 +349,17 @@ function Bootstrap-Chain {
         do {
             $prompt = Read-Host -Prompt "Would you like to bootstrap the chain? (y/n) "
             if ($prompt -eq "y" -or $prompt -eq "") {
-                $global:BOOTSTRAP_ANS = 1
-                $validInput = $true
-            } elseif ($prompt -eq "n") {
-                $validInput = $true
-            } else {
-                Write-Host "  Please enter 'y', 'n' or leave empty for 'y'..." -ForegroundColor Yellow
-                $validInput = $false
+                $global:bootstrapAns = 1
             }
-        } while (-not $validInput)
+        } while ($prompt -ne "y" -and $prompt -ne "n" -and $prompt -ne "")
         return
     }
-    if ($global:BOOTSTRAP_ANS -eq "1") {
+    if ($global:bootstrapAns -eq "1") {
             if (-not (Test-Path -Path "$env:APPDATA\bootstrap")) {
                 New-Item -ItemType Directory -Path "$env:APPDATA\bootstrap" -ErrorAction SilentlyContinue -Force | Out-Null
             }
             Write-CurrentTime; Write-Host "  Downloading the bootstrap, please be patient..." -ForegroundColor Cyan
-            Start-BitsTransfer -Source $BOOTSTRAP_ZIP -Destination "$env:APPDATA\bootstrap\" -DisplayName "Downloading bootstrap from $BOOTSTRAP_ZIP"
+            Start-BitsTransfer -Source $bootstrapZip -Destination "$env:APPDATA\bootstrap\" -DisplayName "Downloading bootstrap from $bootstrapZip"
             Extract-Bootstrap
     }
     Start-Sleep -Seconds 1
@@ -362,9 +369,9 @@ function Chain-Backup {
     Write-CurrentTime; Write-Host "  Creating bootstrap script..." -ForegroundColor Cyan
     $chainBackupScript = @"
 `$bootstrapZipPath = $bootstrapZipPath
-`$CONFIG_DIR = "`$env:APPDATA\RaptoreumSmartNode"
+`$configDir = "`$env:APPDATA\RaptoreumSmartNode"
 Move-Item -Path "`$env:USERPROFILE\check_testnet.ps1" -Destination "`$env:USERPROFILE\temp.ps1"
-Stop-Service -Name "RTMServiceTestnet" -ErrorAction SilentlyContinue -Force
+Stop-Service -Name $serviceName -ErrorAction SilentlyContinue -Force
 Start-Sleep -Seconds 2
 # Check if the wallet process is running and kill it if it is
 `$walletProcess = Get-Process -Name "raptoreumd" -ErrorAction SilentlyContinue
@@ -376,10 +383,10 @@ if (`$walletProcess) {
 }
 Start-Sleep -Seconds 2
 Remove-Item -Path `$bootstrapZipPath -ErrorAction SilentlyContinue
-Compress-Archive -Path "`$CONFIG_DIR\nodetest\blocks", "`$CONFIG_DIR\nodetest\chainstate", "`$CONFIG_DIR\nodetest\evodb", "`$CONFIG_DIR\nodetest\llmq" -DestinationPath `$bootstrapZipPath
-Write-Host "(`$((((Get-Date).ToString("yyyy-MM-dd HH:mm:ss")))))  Bootstrap created"
-Start-Service -Name "RTMServiceTestnet" -ErrorAction SilentlyContinue -Force
-Move-Item -Path "`$env:USERPROFILE\temp.ps1"" -Destination "`$env:USERPROFILE\check_testnet.ps1"
+Compress-Archive -Path "`$configDir\nodetest\blocks", "`$configDir\nodetest\chainstate", "`$configDir\nodetest\evodb", "`$configDir\nodetest\llmq" -DestinationPath `$bootstrapZipPath
+Write-Host "(`$(Get-Date).ToString("yyyy-MM-dd HH:mm:ss"))  Bootstrap created"
+Start-Service -Name $serviceName -ErrorAction SilentlyContinue -Force
+Move-Item -Path "`$env:USERPROFILE\temp.ps1" -Destination "`$env:USERPROFILE\check_testnet.ps1"
 "@
     Set-Content -Path "$env:USERPROFILE\chainbackup_testnet.ps1" -Value $chainBackupScript
     Write-CurrentTime; Write-Host "  Script created: $env:USERPROFILE\chainbackup_testnet.ps1..." -ForegroundColor Yellow
@@ -399,15 +406,15 @@ if (-not (IsAdministrator)) {
     pause
     exit
 }
-`$COIN_PATH = "`$env:ProgramFiles (x86)\RaptoreumCore"
+`$coinPath = "`$env:ProgramFiles (x86)\RaptoreumCore"
 #Show versions
-`$FilePath = Join-Path `$COIN_PATH "raptoreumd.exe"
+`$FilePath = "`$coinPath\raptoreumd.exe"
 `$fileVersionInfo = Get-Item `$FilePath -ErrorAction SilentlyContinue| Get-ItemProperty | Select-Object -ExpandProperty VersionInfo
 `$fileVerion = `$fileVersionInfo.ProductVersion
 `$uri = "https://api.github.com/repos/Raptor3um/raptoreum/releases/latest"
 `$response = Invoke-RestMethod -Uri `$uri
 `$latestVersion = `$response.tag_name
-if (Test-Path `$COIN_PATH) {
+if (Test-Path `$coinPath) {
     if (`$fileVerion -ne `$latestVersion) {
             Write-Host "Your Smartnode version is            : `$fileVerion" -ForegroundColor Yellow
     } 
@@ -423,8 +430,8 @@ Write-Host "Download link: https://github.com/Raptor3um/raptoreum/releases/tag/`
 # Confirm update
 `$confirmUpdate = Read-Host " Do you really want to update your SmartNode ? (y/n)"
 if (`$confirmUpdate.ToLower() -eq "y") {
-    Write-Host "Stopping RTMServiceTestnet..." -ForegroundColor Yellow
-    Stop-Service -Name "RTMServiceTestnet" -ErrorAction SilentlyContinue
+    Write-Host "Stopping $serviceName..." -ForegroundColor Yellow
+    Stop-Service -Name $serviceName -ErrorAction SilentlyContinue
     Start-Sleep -Seconds 5
     # Check if the wallet process is running and kill it if it is
     `$walletProcess = Get-Process "raptoreumd" -ErrorAction SilentlyContinue
@@ -456,11 +463,11 @@ if (`$confirmUpdate.ToLower() -eq "y") {
     `$latestVersion = `$response.tag_name
     `$walletUrl = "https://github.com/Raptor3um/raptoreum/releases/download/`$latestVersion/raptoreum-win-`$latestVersion.zip"
     Write-Host "Downloading..." -ForegroundColor Yellow
-    Start-BitsTransfer -Source `$walletUrl -Destination (Join-Path `$COIN_PATH "raptoreum.zip") -DisplayName "Downloading binaries from `$walletUrl"
+    Start-BitsTransfer -Source `$walletUrl -Destination "`$coinPath\raptoreum.zip" -DisplayName "Downloading binaries from `$walletUrl"
     Write-Host "Unzipping..." -ForegroundColor Yellow
-    Expand-Archive -Path (Join-Path `$COIN_PATH "raptoreum.zip") -DestinationPath `$COIN_PATH -ErrorAction SilentlyContinue -Force
-    Write-Host "Starting RTMServiceTestnet..." -ForegroundColor Yellow
-    Start-Service -Name "RTMServiceTestnet" -ErrorAction SilentlyContinue
+    Expand-Archive -Path "`$coinPath\raptoreum.zip" -DestinationPath `$coinPath -ErrorAction SilentlyContinue -Force
+    Write-Host "Starting $serviceName..." -ForegroundColor Yellow
+    Start-Service -Name $serviceName -ErrorAction SilentlyContinue
     Write-Host "Binaries updated to v`$latestVersion successfully..." -ForegroundColor Green
 } else {
 Write-Host "Skipping update..." -ForegroundColor Yellow
@@ -478,21 +485,20 @@ powershell.exe -ExecutionPolicy Bypass -File "%USERPROFILE%\update_testnet.ps1"
 }
 
 function Create-Service {
-    if (-not (Get-Service -Name "RTMServiceTestnet" -ErrorAction SilentlyContinue)) {
+    if (-not (Get-Service -Name $serviceName -ErrorAction SilentlyContinue)) {
         Install-NSSM
-        $ServiceName = "RTMServiceTestnet"
-        $ExecutablePath = Join-Path $COIN_PATH "raptoreumd.exe"
-        $Arguments = "-testnet -datadir=$CONFIG_DIR -conf=$configPath"
-        $NSSM_exe = Join-Path $env:UserProfile "nssm-2.24\win64\nssm.exe"
-        Write-CurrentTime; Write-Host "  Creating RTMServiceTestnet with NSSM..." -ForegroundColor Cyan
-        & $NSSM_exe install $ServiceName $ExecutablePath $Arguments | Out-Null
-        Write-CurrentTime; Write-Host "  Setting RTMServiceTestnet to start automatically..." -ForegroundColor Yellow
-        & $NSSM_exe set $ServiceName Start SERVICE_AUTO_START | Out-Null
-        Write-CurrentTime; Write-Host "  RTMServiceTestnet has been created successfully." -ForegroundColor Yellow
-        $service = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
+        $ExecutablePath = "$coinPath\raptoreumd.exe"
+        $Arguments = "-testnet -datadir=$configDir -conf=$configPath"
+        $NSSM_exe = "$env:UserProfile\nssm-2.24\win64\nssm.exe"
+        Write-CurrentTime; Write-Host "  Creating $serviceName with NSSM..." -ForegroundColor Cyan
+        & $NSSM_exe install $serviceName $ExecutablePath $Arguments | Out-Null
+        Write-CurrentTime; Write-Host "  Setting $serviceName to start automatically..." -ForegroundColor Yellow
+        & $NSSM_exe set $serviceName Start SERVICE_AUTO_START | Out-Null
+        Write-CurrentTime; Write-Host "  $serviceName has been created successfully." -ForegroundColor Yellow
+        $service = Get-Service -Name $serviceName -ErrorAction SilentlyContinue
         if (-not $Null -eq $service) {
             Write-CurrentTime; Write-Host "  Starting daemon service & syncing chain please be patient this will take few moment (10s)..." -ForegroundColor Cyan
-            Start-Service $ServiceName -ErrorAction Continue
+            Start-Service $serviceName -ErrorAction Continue
             Start-Sleep -Seconds 10
             Write-CurrentTime; Write-Host "  Getting blockchain info (%traptoreumclites% getblockchaininfo)..." -ForegroundColor Yellow
             cmd /C "$global:CLI getblockchaininfo" 2>&1
@@ -503,12 +509,12 @@ function Create-Service {
             pause
             exit
         }
-        Write-CurrentTime; Write-Host "  RTMServiceTestnet has been created and started successfully..." -ForegroundColor Yellow
+        Write-CurrentTime; Write-Host "  $serviceName has been created and started successfully..." -ForegroundColor Yellow
     }
     Start-Sleep -Seconds 1
 }
 
-$global:SECURITY_ANS = ""
+$global:securityAns = ""
 function Basic-Security {
     # If $QuickSetup is provided, just ask about basic security.
     param(
@@ -518,7 +524,7 @@ function Basic-Security {
         do {
             $result = Read-Host -Prompt "Would you like to setup basic firewall? (y/n) "
             if ($result -eq "y" -or $result -eq "") {
-                $global:SECURITY_ANS = 1
+                $global:securityAns = 1
                 $validInput = $true
             } elseif ($result -eq "n") {
                 $validInput = $true
@@ -529,10 +535,10 @@ function Basic-Security {
         } while (-not $validInput)
         return
     }
-    if ($global:SECURITY_ANS -eq "1") {
+    if ($global:securityAns -eq "1") {
         Write-CurrentTime; Write-Host "  Configuring firewall..." -ForegroundColor Cyan
         # Allow SSH and RTM ports
-        New-NetFirewallRule -DisplayName "Allow SSH" -Direction Inbound -LocalPort $global:SSHPORT -Protocol TCP -Action Allow | Out-Null
+        New-NetFirewallRule -DisplayName "Allow SSH" -Direction Inbound -LocalPort $global:sshPort -Protocol TCP -Action Allow | Out-Null
         New-NetFirewallRule -DisplayName "Allow Testnet RTM" -Direction Inbound -LocalPort "10229" -Protocol TCP -Action Allow | Out-Null
         #New-NetFirewallRule -DisplayName "Allow Raptoreumd" -Direction Inbound -Program "C:\program files (x86)\raptoreumcore\raptoreumd.exe" -Action Allow -Protocol TCP -LocalPort 10229 | Out-Null
         #Set-NetFirewallRule -Name "Allow Raptoreumd" -Profile Any | Out-Null
@@ -543,22 +549,27 @@ function Basic-Security {
     Start-Sleep -Seconds 1
 }
 
-$global:PROTX_HASH = ""
+$global:protxHash = ""
 function Schedule-Jobs {
     # If $QuickSetup is provided, just ask about ProTx Hash.
     param (
         [string]$QuickSetup
     )
-    $CHECK_SCRIPT_PATH = "$env:USERPROFILE\check_testnet.bat"
-    $CHAINBACKUP_SCRIPT_PATH = "$env:USERPROFILE\chainbackup_testnet.bat"
+    $checkScriptPath = "$env:USERPROFILE\check_testnet.bat"
+    $chainbackupScriptPath = "$env:USERPROFILE\chainbackup_testnet.bat"
     if (-not [string]::IsNullOrEmpty($QuickSetup)) {
-        $global:PROTX_HASH = Read-Host -Prompt "Please enter your protx hash for this SmartNode "
+        do {
+            $global:protxHash = Read-Host -Prompt "Please enter your protx hash for this SmartNode "
+            if ($global:protxHash.Length -ne 64) {
+                Write-Host "  The proTX must be 64 characters long, please check your proTX..." -ForegroundColor Yellow
+            }
+        } until ($global:protxHash.Length -eq 64)
         return
     }
     $checkUrl = "https://raw.githubusercontent.com/wizz13150/Raptoreum_SmartNode/main/check_testnet.ps1"
     Start-BitsTransfer -Source $checkUrl -Destination "$env:USERPROFILE\check_testnet.ps1" -DisplayName "Downloading file from $checkUrl"
     # Replace NODE_PROTX value in check_testnet.ps1
-    (Get-Content "$env:USERPROFILE\check_testnet.ps1").Replace('#NODE_PROTX=', "`$NODE_PROTX = `"$global:PROTX_HASH`"") | Set-Content "$env:USERPROFILE\check_testnet.ps1"
+    (Get-Content "$env:USERPROFILE\check_testnet.ps1").Replace('#NODE_PROTX=', "`$NODE_PROTX = `"$global:protxHash`"") | Set-Content "$env:USERPROFILE\check_testnet.ps1"
     # Create scheduled tasks
     Write-CurrentTime; Write-Host "  Creating scheduled tasks..." -ForegroundColor cyan
     $checkTaskName = "RTMCheck_testnet"
@@ -571,26 +582,21 @@ function Schedule-Jobs {
     $chainBackupTrigger = New-ScheduledTaskTrigger -Weekly -DaysOfWeek Wednesday -WeeksInterval 4 -At 03:00
     $checkLog = "$env:USERPROFILE\check-testnet.log"
     $bootstrapLog = "$env:USERPROFILE\bootstrap-testnet.log"
-    $checkAction = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument "-Command `"Start-Process cmd.exe -ArgumentList '/c `"$CHECK_SCRIPT_PATH`"' -Verb RunAs`""" > `"$checkLog`""
-    $chainBackupAction = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument "-Command `"Start-Process cmd.exe -ArgumentList '/c `"$CHAINBACKUP_SCRIPT_PATH`"' -Verb RunAs`""" > `"$bootstrapLog`""
+    $checkAction = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument "-Command `"Start-Process cmd.exe -ArgumentList '/c `"$checkScriptPath`"' -Verb RunAs`""" > `"$checkLog`""
+    $chainBackupAction = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument "-Command `"Start-Process cmd.exe -ArgumentList '/c `"$chainbackupScriptPath`"' -Verb RunAs`""" > `"$bootstrapLog`""
     $User = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
     $Principal = New-ScheduledTaskPrincipal -UserID $User -LogonType S4U -RunLevel Highest
     Register-ScheduledTask -TaskName $checkTaskName -Trigger $checkTrigger -Action $checkAction -Principal $Principal | Out-Null
     Register-ScheduledTask -TaskName $chainBackupTaskName -Trigger $chainBackupTrigger -Action $chainBackupAction -Principal $Principal | Out-Null
-    #Register-ScheduledTask -TaskName $checkTaskName -Trigger $checkTrigger -Action $checkAction -User "System" -RunLevel Highest | Out-Null
-    #Register-ScheduledTask -TaskName $chainBackupTaskName -Trigger $chainBackupTrigger -Action $chainBackupAction -User "System" -RunLevel Highest | Out-Null
     Write-CurrentTime; Write-Host "  Scheduled tasks successfully created..." -ForegroundColor Yellow
     Start-Sleep -Seconds 1
 }
 
 function Log-Rotate {
-    if (-not (Test-Path "$env:ProgramFiles\LogrotateWin\LogrotateWin.exe")) {
-        Write-CurrentTime; Write-Host "  Installing LogrotateWin..." -ForegroundColor Cyan
-        Install-LogrotateWin
-    }
+    Install-LogrotateWin
     $logrotateConfig = @"
 # Debug.log configuration
-$CONFIG_DIR\debug.log {
+$configDir\debug.log {
     compress
     copytruncate
     missingok
@@ -614,7 +620,7 @@ $env:USERPROFILE\check_testnet.log {
 }
 "@
     Write-CurrentTime; Write-Host "  Configuring logrotate function for debug log..." -ForegroundColor Yellow
-    $logrotateConfigPath = (Join-Path $env:USERPROFILE "rtmdebuglogrotate_testnet.conf")
+    $logrotateConfigPath = "$env:USERPROFILE\rtmdebuglogrotate_testnet.conf"
     if (Test-Path $logrotateConfigPath) {
         Write-CurrentTime; Write-Host "  Existing log rotate conf found, backing up to ~/rtmdebuglogrotate.old ..." -ForegroundColor Yellow
         Move-Item $logrotateConfigPath "$env:USERPROFILE\rtmdebuglogrotate_testnet.old" -ErrorAction SilentlyContinue -Force
@@ -629,13 +635,13 @@ function Create-MOTD {
     Write-Host " Smartnode healthcheck by Delgon" -ForegroundColor Cyan
     Write-Host " Adapted to Windows by Wizz" -ForegroundColor Cyan
     Write-Host "" 
-    Write-Host " Commands to manage RTMServiceTestnet(deamon) with cmd :" -ForegroundColor Yellow
-    Write-Host "   TO START -  Net Start RTMServiceTestnet" -ForegroundColor Cyan
-    Write-Host "   TO STOP  -  Net Stop RTMServiceTestnet" -ForegroundColor Cyan
-    Write-Host "   STATUS   -  SC Query RTMServiceTestnet" -ForegroundColor Cyan
+    Write-Host " Commands to manage $serviceName(deamon) with cmd :" -ForegroundColor Yellow
+    Write-Host "   TO START -  Net Start $serviceName" -ForegroundColor Cyan
+    Write-Host "   TO STOP  -  Net Stop $serviceName" -ForegroundColor Cyan
+    Write-Host "   STATUS   -  SC Query $serviceName" -ForegroundColor Cyan
     Write-Host " In the event server reboots, the daemon service will auto-start"
     Write-Host ""
-    Write-Host ' To use raptoreum-cli with cmd, simply start a command with %raptoreumcli% :' -ForegroundColor Yellow
+    Write-Host ' To use raptoreum-cli with cmd, simply start a command with %traptoreumcli% :' -ForegroundColor Yellow
     Write-Host '   E.g     %traptoreumcli% getblockchaininfo' -ForegroundColor Cyan
     Write-Host '   E.g     %traptoreumcli% smartnode status' -ForegroundColor Cyan
     Write-Host ""
@@ -651,12 +657,12 @@ function Create-MOTD {
 ================================================================================================
   COURTESY OF DK808 FROM ALTTANK ARMY
   Smartnode healthcheck by Delgon
-  March 2023, adapted to Windows by Wizz
+  Adapted to Windows by Wizz
 
-  Commands to manage RTMServiceTestnet(deamon) with cmd :
-    TO START -  Net Start RTMServiceTestnet
-    TO STOP  -  Net Stop RTMServiceTestnet
-    STATUS   -  SC Query RTMServiceTestnet
+  Commands to manage $serviceName(deamon) with cmd :
+    TO START -  Net Start $serviceName
+    TO STOP  -  Net Stop $serviceName
+    STATUS   -  SC Query $serviceName
   In the event server reboots, the daemon service will auto-start
 
   To use raptoreum-cli with cmd, simply start a command with %traptoreumcli% :
@@ -668,32 +674,32 @@ function Create-MOTD {
   Remember to always encrypt your wallet with a strong password !
 ================================================================================================
 "@
-    $BASH = @"
+    $bash = @"
 @echo off
-type "%USERPROFILE%\RTM-MOTD_testnet.txt" > "%TEMP%\texte.txt"
-start cmd.exe /k "type %TEMP%\texte.txt & del %TEMP%\texte.txt"
+start cmd.exe /k "type %USERPROFILE%\RTM-MOTD_testnet.txt"
 "@
-    $CHECKBATCH = @"
+    $checkBash = @"
 @echo off
 powershell.exe -ExecutionPolicy RemoteSigned -File %USERPROFILE%\check_testnet.ps1"
 "@
-    $BACKUPBATCH = @"
+    $backupBash = @"
 @echo off
 powershell.exe -ExecutionPolicy RemoteSigned -File %USERPROFILE%\chainbackup_testnet.ps1"
 "@
-    $BACKUPPath = Join-Path $env:USERPROFILE "chainbackup_testnet.bat"
-    Set-Content -Path $BACKUPPath -Value $BACKUPBATCH -ErrorAction SilentlyContinue -Force
-    $BATCHPath = Join-Path $env:USERPROFILE "check_testnet.bat"
-    Set-Content -Path $BATCHPath -Value $CHECKBATCH -ErrorAction SilentlyContinue -Force
-    $MOTDPath = Join-Path $env:USERPROFILE "RTM-MOTD_testnet.txt"
+    $backupPath = "$env:USERPROFILE\chainbackup_testnet.bat"
+    Set-Content -Path $backupPath -Value $backupBash -ErrorAction SilentlyContinue -Force
+    $batchPath = "$env:USERPROFILE\check_testnet.bat"
+    Set-Content -Path $batchPath -Value $checkBash -ErrorAction SilentlyContinue -Force
+    $MOTDPath = "$env:USERPROFILE\RTM-MOTD_testnet.txt"
     Set-Content -Path $MOTDPath -Value $MOTD -ErrorAction SilentlyContinue -Force
-    $BASHPATH = Join-Path $env:USERPROFILE "SmartNodeBash_testnet.bat"
-    Set-Content -Path $BASHPATH -Value $BASH -ErrorAction SilentlyContinue -Force
+    $bashPath = "$env:USERPROFILE\SmartNodeBash_testnet.bat"
+    Set-Content -Path $bashPath -Value $bash -ErrorAction SilentlyContinue -Force
 }
 
 # Clean the environment from possibly previous setup.
 Wipe-Clean
 Environment-Variable
+KeepWindows-Up
 
 # Ask about things first for quick setup.
 Get-SSHPort
