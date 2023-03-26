@@ -1,17 +1,17 @@
 # URLs for raptoreum explorers. Main and backup one.
-$URL = @( 'https://testnet.raptoreum.com/', 'https://raptor.mopsus.com/' )   # Testnet
-$URL_ID = 0
+$url = @( 'https://testnet.raptoreum.com/', 'https://raptor.mopsus.com/' )   # Testnet
+$url_ID = 0
 
-#$BOOTSTRAP_ZIP = "https://bootstrap.raptoreum.com/testnet-bootstraps/testnet-bootstrap-1.3.17.02rc.zip"                        #Official testnet bootstrap (blockheight 98K)
-$BOOTSTRAP_ZIP = "https://github.com/wizz13150/Raptoreum_SmartNode/releases/download/SmartNode_Install/bootstrap-testnet.zip"   #wizz's bootstrap (blockheight 172K)
-$RAPTOREUM_CLI = $env:traptoreumcli
-$CONFIG_DIR = "$env:APPDATA\RaptoreumSmartnode"
+#$bootstrapZip = "https://bootstrap.raptoreum.com/testnet-bootstraps/testnet-bootstrap-1.3.17.02rc.zip"                        #Official testnet bootstrap (blockheight 98K)
+$bootstrapZip = "https://github.com/wizz13150/Raptoreum_SmartNode/releases/download/SmartNode_Install/bootstrap-testnet.zip"   #wizz's bootstrap (blockheight 172K)
+$raptoreumCLI = $env:traptoreumcli
+$configDir = "$env:APPDATA\RaptoreumSmartnode"
 $serviceName = "RTMServiceTestnet"
 $bootstrapZipPath = "$env:APPDATA\bootstrap\bootstrap-testnet.zip"   # Testnet
 
-$POSE_SCORE = 0
-$PREV_SCORE = 0
-$LOCAL_HEIGHT = 0
+$poseScore = 0
+$prevScore = 0
+$localHeight = 0
 
 # Add your NODE_PROTX here if you forgot or provided wrong hash during node installation.
 #NODE_PROTX=
@@ -46,8 +46,8 @@ function tryToKillDaemonGracefullyFirst {
         Stop-Process $raptoreumdProcess -ErrorAction SilentlyContinue -Force
     }
     Start-Sleep -Seconds 10
-    $LOCAL_HEIGHT = Get-Number (cmd /C "$env:traptoreumcli getblockcount" 2>&1)
-    if ($LOCAL_HEIGHT -lt 0) {
+    $localHeight = Get-Number (cmd /C "$env:traptoreumcli getblockcount" 2>&1)
+    if ($localHeight -lt 0) {
         Write-CurrentTime; Write-Host "  Unable to kill daemon gracefully, check and restart RTMServiceTestnet..." -ForegroundColor Yellow
         CheckAndRestart-RTMService
     } else {
@@ -86,59 +86,59 @@ function CheckAndRestart-RTMService {
 function Check-PoSe {
   # Check if the Node PoSe score is changing.
   if (![string]::IsNullOrEmpty($NODE_PROTX)) {
-    $POSE_SCORE = (Invoke-WebRequest -Uri "$($URL[$URL_ID])api/protx?command=info&protxhash=$($NODE_PROTX)" -UseBasicParsing).Content | ConvertFrom-Json | Select-Object -ExpandProperty state | Select-Object -ExpandProperty PoSePenalty
-    if ((Get-Number $POSE_SCORE) -lt 0 -and $POSE_SCORE -ne "null") {
-      $URL_ID = ($URL_ID + 1) % 2
-      $POSE_SCORE = (Invoke-WebRequest -Uri "$($URL[$URL_ID])api/protx?command=info&protxhash=$($NODE_PROTX)" -UseBasicParsing).Content | ConvertFrom-Json | Select-Object -ExpandProperty state | Select-Object -ExpandProperty PoSePenalty
+    $poseScore = (Invoke-WebRequest -Uri "$($url[$url_ID])api/protx?command=info&protxhash=$($NODE_PROTX)" -UseBasicParsing).Content | ConvertFrom-Json | Select-Object -ExpandProperty state | Select-Object -ExpandProperty PoSePenalty
+    if ((Get-Number $poseScore) -lt 0 -and $poseScore -ne "null") {
+      $url_ID = ($url_ID + 1) % 2
+      $poseScore = (Invoke-WebRequest -Uri "$($url[$url_ID])api/protx?command=info&protxhash=$($NODE_PROTX)" -UseBasicParsing).Content | ConvertFrom-Json | Select-Object -ExpandProperty state | Select-Object -ExpandProperty PoSePenalty
     }
-    if ($POSE_SCORE -eq "null") {
+    if ($poseScore -eq "null") {
       Write-CurrentTime; Write-Host "  Your NODE_PROTX is invalid, please insert your NODE_PROTX hash in the script..." -ForegroundColor Yellow
       Write-CurrentTime; Write-Host "  The script path is: $env:UserProfile\check_testnet.ps1 - line 20" -ForegroundColor Yellow
-    } elseif ((Get-Number $POSE_SCORE) -eq -1) {
+    } elseif ((Get-Number $poseScore) -eq -1) {
       Write-CurrentTime; Write-Host "  Could not get PoSe score for the node. It is possible both explorers are down..." -ForegroundColor Yellow
     }
-    $POSE_SCORE = Get-Number $POSE_SCORE
+    $poseScore = Get-Number $poseScore
   } else {
     Write-CurrentTime; Write-Host "  Your NODE_PROTX is empty. Please reinitialize the node again or add it in the script..." -ForegroundColor Yellow
     Write-CurrentTime; Write-Host "  The script is located at $env:UserProfile\check_testnet.ps1 - line 20" -ForegroundColor Yellow
   }
-  $PREV_SCORE = Read-Value -FilePath "$env:UserProfile\pose_score_testnet.tmp"
-  Set-Content -Path "$env:UserProfile\pose_score_testnet.tmp" -Value $POSE_SCORE -ErrorAction SilentlyContinue -Force
+  $prevScore = Read-Value -FilePath "$env:UserProfile\pose_score_testnet.tmp"
+  Set-Content -Path "$env:UserProfile\pose_score_testnet.tmp" -Value $poseScore -ErrorAction SilentlyContinue -Force
   # Check if we should restart raptoreumd according to the PoSe score.
-  if ($POSE_SCORE -gt 0) {
-    if ($POSE_SCORE -gt $PREV_SCORE) {
-      Write-CurrentTime; Write-Host "  Score increased from $($PREV_SCORE) to $($POSE_SCORE). Send kill signal..." -ForegroundColor Yellow
+  if ($poseScore -gt 0) {
+    if ($poseScore -gt $prevScore) {
+      Write-CurrentTime; Write-Host "  Score increased from $($prevScore) to $($poseScore). Send kill signal..." -ForegroundColor Yellow
       tryToKillDaemonGracefullyFirst
       Set-Content -Path "$env:UserProfile\was_stuck_testnet.tmp" -Value "1" -ErrorAction SilentlyContinue -Force
       # Do not check node height after killing raptoreumd it is sure to be stuck.
       return
-    } elseif ($POSE_SCORE -lt $PREV_SCORE) {
-      Write-CurrentTime; Write-Host "  Score decreased from $($PREV_SCORE) to $($POSE_SCORE). Wait..." -ForegroundColor Yellow
+    } elseif ($poseScore -lt $prevScore) {
+      Write-CurrentTime; Write-Host "  Score decreased from $($prevScore) to $($poseScore). Wait..." -ForegroundColor Yellow
       Remove-Item -Path "$env:UserProfile\was_stuck_testnet.tmp" -ErrorAction SilentlyContinue -Force
     }
-    # $POSE_SCORE -eq $PREV_SCORE is gonna force check the node block height.
+    # $poseScore -eq $prevScore is gonna force check the node block height.
   }
 }
 
 function Check-BlockHeight {
   # Check local block height.
-  $NETWORK_HEIGHT = Get-Number ((Invoke-WebRequest -Uri "$($URL[$URL_ID])api/getblockcount" -UseBasicParsing).Content)
-  if ($NETWORK_HEIGHT -lt 0) {
-    $URL_ID = ($URL_ID + 1) % 2
-    $NETWORK_HEIGHT = Get-Number ((Invoke-WebRequest -Uri "$($URL[$URL_ID])api/getblockcount" -UseBasicParsing).Content)
+  $networkHeight = Get-Number ((Invoke-WebRequest -Uri "$($url[$url_ID])api/getblockcount" -UseBasicParsing).Content)
+  if ($networkHeight -lt 0) {
+    $url_ID = ($url_ID + 1) % 2
+    $networkHeight = Get-Number ((Invoke-WebRequest -Uri "$($url[$url_ID])api/getblockcount" -UseBasicParsing).Content)
   }
-  $PREV_HEIGHT = Read-Value -FilePath "$env:UserProfile\height_testnet.tmp"
-  $LOCAL_HEIGHT = Get-Number (cmd /C "$env:traptoreumcli getblockcount" 2>&1)
-  Set-Content -Path "$env:UserProfile\height_testnet.tmp" -Value $LOCAL_HEIGHT -ErrorAction SilentlyContinue -Force
-  if ($POSE_SCORE -eq $PREV_SCORE -or $PREV_SCORE -eq -1) {
-    Write-CurrentTime; Write-Host "  Node height $($LOCAL_HEIGHT)/$($NETWORK_HEIGHT)..." -ForegroundColor Green
+  $prevHeight = Read-Value -FilePath "$env:UserProfile\height_testnet.tmp"
+  $localHeight = Get-Number (cmd /C "$env:traptoreumcli getblockcount" 2>&1)
+  Set-Content -Path "$env:UserProfile\height_testnet.tmp" -Value $localHeight -ErrorAction SilentlyContinue -Force
+  if ($poseScore -eq $prevScore -or $prevScore -eq -1) {
+    Write-CurrentTime; Write-Host "  Node height $($localHeight)/$($networkHeight)..." -ForegroundColor Green
     # Block height did not change. Is it stuck?. Compare with network block height. Allow some slippage.
-    if (($NETWORK_HEIGHT - $LOCAL_HEIGHT) -gt 3 -or $NETWORK_HEIGHT -eq -1) {
-      if ($LOCAL_HEIGHT -gt $PREV_HEIGHT) {
+    if (($networkHeight - $localHeight) -gt 3 -or $networkHeight -eq -1) {
+      if ($localHeight -gt $prevHeight) {
         # Node is still syncing?
         Remove-Item -Path "$env:UserProfile\was_stuck_testnet.tmp" -ErrorAction SilentlyContinue -Force
-        Write-CurrentTime; Write-Host "  Increased from $($PREV_HEIGHT) -> $($LOCAL_HEIGHT). Wait..." -ForegroundColor Yellow
-      } elseif ($LOCAL_HEIGHT -gt 0 -and (Read-Value -FilePath "$env:UserProfile\was_stuck_testnet.tmp") -lt 0) {
+        Write-CurrentTime; Write-Host "  Increased from $($prevHeight) -> $($localHeight). Wait..." -ForegroundColor Yellow
+      } elseif ($localHeight -gt 0 -and (Read-Value -FilePath "$env:UserProfile\was_stuck_testnet.tmp") -lt 0) {
         # Node is behind the network height and it is first attempt at unstucking.
         # If LOCAL_HEIGHT is >0 it means that we were able to read from the cli
         # but the height did not change compared to previous check.
@@ -171,14 +171,14 @@ function Check-BlockHeight {
 
 function Reconsider-Block {
   $prev_stuck = Get-Content -Path "$env:UserProfile\prev_stuck_testnet.tmp"
-  if (($LOCAL_HEIGHT -gt 0) -and ($LOCAL_HEIGHT -gt $prev_stuck)) {
-    $RECONSIDER = $LOCAL_HEIGHT - 10
-    $HASH = cmd /C "$env:traptoreumcli getblockhash $RECONSIDER" 2>&1
-    if ($HASH -ne "-1") {
-      Write-CurrentTime; Write-Host "  Reconsider chain from 10 blocks before current one $RECONSIDER."
-      if ([string]::IsNullOrEmpty((cmd /C "$env:traptoreumcli reconsiderblock $HASH" 2>&1))) {
-        Set-Content -Path "$env:UserProfile\height_testnet.tmp" -Value $RECONSIDER -ErrorAction SilentlyContinue -Force
-        Set-Content -Path "$env:UserProfile\prev_stuck_testnet.tmp" -Value $LOCAL_HEIGHT -ErrorAction SilentlyContinue -Force
+  if (($localHeight -gt 0) -and ($localHeight -gt $prev_stuck)) {
+    $reconsider = $localHeight - 10
+    $hash = cmd /C "$env:traptoreumcli getblockhash $reconsider" 2>&1
+    if ($hash -ne "-1") {
+      Write-CurrentTime; Write-Host "  Reconsider chain from 10 blocks before current one $reconsider."
+      if ([string]::IsNullOrEmpty((cmd /C "$env:traptoreumcli reconsiderblock $hash" 2>&1))) {
+        Set-Content -Path "$env:UserProfile\height_testnet.tmp" -Value $reconsider -ErrorAction SilentlyContinue -Force
+        Set-Content -Path "$env:UserProfile\prev_stuck_testnet.tmp" -Value $localHeight -ErrorAction SilentlyContinue -Force
         Write-CurrentTime; Write-Host "  Reconsider-Block return `$false, better call Saul for some legal advice !.." -ForegroundColor Yellow
         Write-CurrentTime; Write-Host "  Joke, let's just run the 'Bootstrap' function first..." -ForegroundColor Yellow
         return $false
@@ -198,19 +198,19 @@ function Bootstrap {
   Stop-Service -Name $serviceName -ErrorAction SilentlyContinue -Force
   Stop-Process -Name "raptoreumd" -ErrorAction SilentlyContinue -Force
   # Clean
-  Write-CurrentTime; Write-Host "  Clean $CONFIG_DIR...."
-  Remove-Item -Recurse -Path "$CONFIG_DIR\nodetest\blocks" -ErrorAction SilentlyContinue -Force
-  Remove-Item -Recurse -Path "$CONFIG_DIR\nodetest\chainstate" -ErrorAction SilentlyContinue -Force
-  Remove-Item -Recurse -Path "$CONFIG_DIR\nodetest\evodb" -ErrorAction SilentlyContinue -Force
-  Remove-Item -Recurse -Path "$CONFIG_DIR\nodetest\llmq" -ErrorAction SilentlyContinue -Force
-  Remove-Item -Recurse -Path "$CONFIG_DIR\nodetest\powcache.dat" -ErrorAction SilentlyContinue -Force
+  Write-CurrentTime; Write-Host "  Clean $configDir...."
+  Remove-Item -Recurse -Path "$configDir\nodetest\blocks" -ErrorAction SilentlyContinue -Force
+  Remove-Item -Recurse -Path "$configDir\nodetest\chainstate" -ErrorAction SilentlyContinue -Force
+  Remove-Item -Recurse -Path "$configDir\nodetest\evodb" -ErrorAction SilentlyContinue -Force
+  Remove-Item -Recurse -Path "$configDir\nodetest\llmq" -ErrorAction SilentlyContinue -Force
+  Remove-Item -Recurse -Path "$configDir\nodetest\powcache.dat" -ErrorAction SilentlyContinue -Force
   # Download and prepare bootstrap
   Move-Item -Path "$env:USERPROFILE\check_testnet.ps1" -Destination "$env:USERPROFILE\temp.ps1" -Force
   Write-CurrentTime; Write-Host "  Download and prepare bootstrap...." -ForegroundColor Yellow
   if (Test-Path -Path $bootstrapZipPath) {
     Write-CurrentTime; Write-Host "  File bootstrap.zip detected, skip download..." -ForegroundColor Yellow
   } else {
-    Start-BitsTransfer -Source $BOOTSTRAP_ZIP -Destination "$env:APPDATA\bootstrap\bootstrap-testnet.zip" -DisplayName "Downloading bootstrap from $BOOTSTRAP_ZIP"  #Testnet
+    Start-BitsTransfer -Source $bootstrapZip -Destination "$env:APPDATA\bootstrap\bootstrap-testnet.zip" -DisplayName "Downloading bootstrap from $bootstrapZip"  #Testnet
   }
   $zipProgram = ""
   $7zipKey = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\7zFM.exe"
@@ -219,10 +219,10 @@ function Bootstrap {
   }
   if ($zipProgram) {
     Write-CurrentTime; Write-Host "  7-Zip detected, using 7-Zip to extract the bootstrap. Faster..." -ForegroundColor Cyan
-    & "$zipProgram" x "$env:APPDATA\bootstrap\bootstrap-testnet.zip" -o"$CONFIG_DIR" -y                                        #Testnet
+    & "$zipProgram" x "$env:APPDATA\bootstrap\bootstrap-testnet.zip" -o"$configDir" -y                                        #Testnet
   } else {
     Write-CurrentTime; Write-Host "  7-Zip not detected, using 'Expand-Archive' to extract the bootstrap. Slower..." -ForegroundColor Yellow
-    Expand-Archive -Path "$env:APPDATA\bootstrap\bootstrap-testnet.zip" -DestinationPath $CONFIG_DIR -Force -ErrorAction SilentlyContinue      #Testnet
+    Expand-Archive -Path "$env:APPDATA\bootstrap\bootstrap-testnet.zip" -DestinationPath $configDir -Force -ErrorAction SilentlyContinue      #Testnet
   }
   Write-CurrentTime; Write-Host "  Bootstrap complete..." -ForegroundColor Green
   Start-Service -Name $serviceName
@@ -236,4 +236,4 @@ Check-PoSe
 # PoSe seems fine, did not change or was not able to get the score.
 (Check-BlockHeight) -or (Reconsider-Block) -or (Bootstrap)
 
-Start-Sleep -Seconds 10
+Start-Sleep -Seconds 6
