@@ -390,10 +390,10 @@ if (Test-Path `$7zipKey) {
     `$zipProgram = (Get-ItemProperty `$7zipKey).'Path' + "7z.exe"
 }
 if (`$zipProgram) {
-    Write-CurrentTime; Write-Host "  7-Zip detected, using 7-Zip to compress the bootstrap. Faster..." -ForegroundColor Cyan
+    Write-Host "(`$((Get-Date).ToString('yyyy-MM-dd HH:mm:ss')))  7-Zip detected, using 7-Zip to compress the bootstrap. Faster..." -ForegroundColor Cyan
     & "`$zipProgram" a -tzip `$bootstrapZipPath "`$configDir\nodetest\blocks" "`$configDir\nodetest\chainstate" "`$configDir\nodetest\evodb" "`$configDir\nodetest\llmq"
 } else {
-    Write-CurrentTime; Write-Host "  7-Zip not detected, using 'Expand-Archive' to compress the bootstrap. Slower..." -ForegroundColor Cyan
+    Write-Host "(`$((Get-Date).ToString('yyyy-MM-dd HH:mm:ss')))  7-Zip not detected, using 'Expand-Archive' to compress the bootstrap. Slower..." -ForegroundColor Cyan
     Compress-Archive -Path "`$configDir\nodetest\blocks", "`$configDir\nodetest\chainstate", "`$configDir\nodetest\evodb", "`$configDir\nodetest\llmq" -DestinationPath `$bootstrapZipPath
 }
 Write-Host "(`$((Get-Date).ToString('yyyy-MM-dd HH:mm:ss')))  Bootstrap created" -ForegroundColor Green
