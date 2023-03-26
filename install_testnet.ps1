@@ -589,8 +589,8 @@ function Schedule-Jobs {
     $chainBackupTaskName = "RTMChainBackup_testnet"
     Unregister-ScheduledTask -TaskName $checkTaskName -Confirm:$false -ErrorAction SilentlyContinue
     Unregister-ScheduledTask -TaskName $chainBackupTaskName -Confirm:$false -ErrorAction SilentlyContinue
-    # Create trigger for Check task (every 15 minutes)
-    $checkTrigger = New-ScheduledTaskTrigger -Once -At (Get-Date).Date.AddMinutes(15) -RepetitionInterval (New-TimeSpan -Minutes 15)
+    # Create trigger for Check task (every 20 minutes)
+    $checkTrigger = New-ScheduledTaskTrigger -Once -At (Get-Date).Date.AddMinutes(20) -RepetitionInterval (New-TimeSpan -Minutes 20)
     # Create trigger for ChainBackup task (monthly)
     $chainBackupTrigger = New-ScheduledTaskTrigger -Weekly -DaysOfWeek Wednesday -WeeksInterval 4 -At 03:00
     $checkLog = "$env:USERPROFILE\check-testnet.log"
@@ -599,8 +599,10 @@ function Schedule-Jobs {
     $chainBackupAction = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument "-Command `"Start-Process cmd.exe -ArgumentList '/c `"$chainbackupScriptPath`"' -Verb RunAs`" > `"$bootstrapLog`""
     $User = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
     $Principal = New-ScheduledTaskPrincipal -UserID $User -LogonType S4U -RunLevel Highest
-    Register-ScheduledTask -TaskName $checkTaskName -Trigger $checkTrigger -Action $checkAction -Principal $Principal | Out-Null
-    Register-ScheduledTask -TaskName $chainBackupTaskName -Trigger $chainBackupTrigger -Action $chainBackupAction -Principal $Principal | Out-Null
+    # Timeout before next task
+    $settings = New-ScheduledTaskSettingsSet -ExecutionTimeLimit (New-TimeSpan -Minutes 18)
+    Register-ScheduledTask -TaskName $checkTaskName -Trigger $checkTrigger -Action $checkAction -Principal $Principal -Settings $settings | Out-Null
+    Register-ScheduledTask -TaskName $chainBackupTaskName -Trigger $chainBackupTrigger -Action $chainBackupAction -Principal $Principal -Settings $settings | Out-Null
     Write-CurrentTime; Write-Host "  Scheduled tasks successfully created..." -ForegroundColor Yellow
     Start-Sleep -Seconds 1
 }
