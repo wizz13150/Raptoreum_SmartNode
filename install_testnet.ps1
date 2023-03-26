@@ -594,8 +594,8 @@ function Schedule-Jobs {
     $chainBackupTrigger = New-ScheduledTaskTrigger -Weekly -DaysOfWeek Wednesday -WeeksInterval 4 -At 03:00
     $checkLog = "$env:USERPROFILE\check-testnet.log"
     $bootstrapLog = "$env:USERPROFILE\bootstrap-testnet.log"
-    $checkAction = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument "-Command `"Start-Process cmd.exe -ArgumentList '/c `"$checkScriptPath`"' -Verb RunAs`""" > `"$checkLog`""
-    $chainBackupAction = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument "-Command `"Start-Process cmd.exe -ArgumentList '/c `"$chainbackupScriptPath`"' -Verb RunAs`""" > `"$bootstrapLog`""
+    $checkAction = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument "-Command `"Start-Process cmd.exe -ArgumentList '/c `"$checkScriptPath`"' -Verb RunAs`"" > `"$checkLog`""
+    $chainBackupAction = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument "-Command `"Start-Process cmd.exe -ArgumentList '/c `"$chainbackupScriptPath`"' -Verb RunAs`"" > `"$bootstrapLog`""
     $User = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
     $Principal = New-ScheduledTaskPrincipal -UserID $User -LogonType S4U -RunLevel Highest
     Register-ScheduledTask -TaskName $checkTaskName -Trigger $checkTrigger -Action $checkAction -Principal $Principal | Out-Null
