@@ -40,7 +40,7 @@ function tryToKillDaemonGracefullyFirst {
     Write-CurrentTime; Write-Host "  Trying to kill daemon gracefully..." -ForegroundColor Yellow
     $raptoreumdProcess = Get-Process "raptoreumd" -ErrorAction SilentlyContinue
     if ($raptoreumdProcess) {
-        Stop-Process $raptoreumdProcess -ErrorAction SilentlyContinue -Force
+        cmd /C "$env:raptoreumcli stop" 2>&1
     }
     Start-Sleep -Seconds 10
     $localHeight = Get-Number (cmd /C "$env:raptoreumcli getblockcount" 2>&1)
