@@ -572,7 +572,7 @@ function Schedule-Jobs {
     $chainbackupScriptPath = "$env:USERPROFILE\chainbackup_testnet.bat"
     if (-not [string]::IsNullOrEmpty($QuickSetup)) {
         do {
-            $global:protxHash = Read-Host -Prompt "Please enter your protx hash for this SmartNode "
+            $global:protxHash = Read-Host -Prompt "Please enter your protx hash for this SmartNode (txid) "
             if ($global:protxHash.Length -ne 64) {
                 Write-Host "  The proTX must be 64 characters long, please check your proTX..." -ForegroundColor Yellow
             }
