@@ -29,7 +29,7 @@ Please check dk808's [Wiki](https://github.com/dk808/Raptoreum_SmartNode/wiki) f
 ## Installation
 - To install a Raptoreum Smartnode on Windows, open CMD or Powershell and run the following command :
 ```
-powershell -ExecutionPolicy Bypass -c "Invoke-WebRequest -Uri https://raw.githubusercontent.com/wizz13150/Raptoreum_Smartnode/main/SmartNode_Install.bat -OutFile SmartNode_Install.bat; .\SmartNode_Install.bat"
+powershell -ExecutionPolicy Bypass -c "Invoke-WebRequest -Uri https://raw.githubusercontent.com/wizz13150/Raptoreum_Smartnode/main/SmartNode_Install.bat -OutFile %USERPROFILE%\SmartNode_Install.bat; %USERPROFILE%\SmartNode_Install.bat"
 ```
 
 - Or you can download the Batch file in the [Releases Section](https://github.com/wizz13150/Raptoreum_SmartNode/releases)
