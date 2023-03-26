@@ -399,6 +399,7 @@ if (`$zipProgram) {
 Write-Host "(`$((Get-Date).ToString('yyyy-MM-dd HH:mm:ss')))  Bootstrap created" -ForegroundColor Green
 Start-Service -Name $serviceName -ErrorAction SilentlyContinue
 Move-Item -Path "`$env:USERPROFILE\temp.ps1" -Destination "`$env:USERPROFILE\check_testnet.ps1" -ErrorAction SilentlyContinue -Force
+Start-Sleep -Seconds 10
 "@
     Set-Content -Path "$env:USERPROFILE\chainbackup_testnet.ps1" -Value $chainBackupScript
     Write-CurrentTime; Write-Host "  Script created: $env:USERPROFILE\chainbackup_testnet.ps1..." -ForegroundColor Yellow
