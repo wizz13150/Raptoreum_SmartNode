@@ -311,12 +311,12 @@ function Install-Bins {
         Write-CurrentTime; Write-Host "  Raptoreum process detected..." -ForegroundColor Yellow
         $confirmation = ""
         do {
-            $confirmation = Read-Host "Do you want to stop the process '$process' ? (y/n) "
+            $confirmation = Read-Host "Do you want to stop RTMServiceTestnet ? (y/n) "
             if ($confirmation -eq "y") {
-                Stop-Process $process -ErrorAction SilentlyContinue -Force
-                Write-CurrentTime; Write-Host "  Process has been stopped..." -ForegroundColor Yellow
+                Stop-Service RTMServiceTestnet -ErrorAction SilentlyContinue -Force
+                Write-CurrentTime; Write-Host "  RTMServiceTestnet has been stopped..." -ForegroundColor Yellow
             } elseif ($confirmation -eq "n") {
-                Write-CurrentTime; Write-Host "  Process was not stopped, we can't install binaries..." -ForegroundColor Yellow
+                Write-CurrentTime; Write-Host "  RTMServiceTestnet was not stopped, we can't install binaries..." -ForegroundColor Yellow
                 return
             } else {
                 Write-CurrentTime; Write-Host "  Please enter 'y' or 'n'..." -ForegroundColor Yellow
