@@ -24,17 +24,17 @@ $bootstrapZipPath = "$env:APPDATA\bootstrap\bootstrap-testnet.zip"
 $serviceName = "RTMServiceTestnet"
 
 
-Write-Host "===========================================================" -ForegroundColor Yellow 
+Write-Host "=================================" -ForegroundColor Yellow 
 Write-Host " RTM Smartnode Setup for Testnet" -ForegroundColor Yellow 
-Write-Host "===========================================================" -ForegroundColor Yellow 
+Write-Host "=================================" -ForegroundColor Yellow 
 Write-Host ""
 Write-Host " July 2021, created and updated by dk808 from AltTank" -ForegroundColor Cyan 
 Write-Host " With Smartnode healthcheck by Delgon" -ForegroundColor Cyan
 Write-Host " March 2023, adapted to Windows by Wizz" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "================================================================================================" -ForegroundColor Yellow
+Write-Host "=================================================================" -ForegroundColor Yellow
 Write-Host " Remember to always encrypt your wallet with a strong password !" -ForegroundColor Yellow 
-Write-Host "================================================================================================" -ForegroundColor Yellow
+Write-Host "=================================================================" -ForegroundColor Yellow
 Write-Host " Testnet Node setup starting, press [CTRL-C] to cancel..." -ForegroundColor Cyan 
 Start-Sleep -Seconds 1
 
@@ -643,7 +643,7 @@ $env:USERPROFILE\check_testnet.log {
 }
 
 function Create-MOTD {
-    Write-Host "================================================================================================" -ForegroundColor Yellow
+    Write-Host "================================================================================" -ForegroundColor Yellow
     Write-Host " COURTESY OF DK808 FROM ALTTANK ARMY" -ForegroundColor Cyan
     Write-Host " Smartnode healthcheck by Delgon" -ForegroundColor Cyan
     Write-Host " Adapted to Windows by Wizz" -ForegroundColor Cyan
@@ -660,14 +660,14 @@ function Create-MOTD {
     Write-Host ""
     Write-Host " To manage the Smartnode, launch 'SmartnodeBash_testnet' on the desktop" -ForegroundColor Yellow
     Write-Host " To update the Smartnode, launch 'UpdateSmartnode_testnet' on the desktop" -ForegroundColor Yellow
-    Write-Host "================================================================================================" -ForegroundColor Yellow
+    Write-Host "================================================================================" -ForegroundColor Yellow
     Write-Host ' Remember to always encrypt your wallet with a strong password !' -ForegroundColor Green
-    Write-Host "================================================================================================" -ForegroundColor Yellow
+    Write-Host "================================================================================" -ForegroundColor Yellow
 
     $MOTD = @"
-================================================================================================
+================================================================================
   SMARTNODE BASH for Testnet
-================================================================================================
+================================================================================
   COURTESY OF DK808 FROM ALTTANK ARMY
   Smartnode healthcheck by Delgon
   Adapted to Windows by Wizz
@@ -683,9 +683,9 @@ function Create-MOTD {
     E.g:   %traptoreumcli% smartnode status
 
   To update the Smartnode, launch 'UpdateSmartnode_testnet' on the desktop
-================================================================================================
+================================================================================
   Remember to always encrypt your wallet with a strong password !
-================================================================================================
+================================================================================
 "@
     $bash = @"
 @echo off
