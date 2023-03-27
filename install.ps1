@@ -604,7 +604,7 @@ Write-Host "----------------------------------" -ForegroundColor Cyan
 Write-Host "Smartnode status.............: `$(`$smartnodeStatus.status)" -ForegroundColor `$(if (`$smartnodeStatus.status -notmatch 'Ready') {'Yellow'} else {'Green'})
 Write-Host "Smartnode connections........: `$(`$connectionCount)" -ForegroundColor Green
 Write-Host "Smartnode folder size .......: `$([math]::Round(`$folderSize.sum / 1GB, 2)) Gb" -ForegroundColor Green
-Write-Host "Estimated reward per day.....: `$([Math]::Round((720 / `$smartnodeList.count) * 1000, 2)) rtm" -ForegroundColor Green
+Write-Host "Estimated reward per day.....: `$([Math]::Round((720 / `$smartnodeList.count) * 1000, 2)) rtm + fees" -ForegroundColor Green
 Write-Host "IP address and port..........: `$(`$smartnodeStatus.service)" -ForegroundColor Green
 Write-Host "Smartnode ProTX..............: `$proTX" -ForegroundColor Green
 Write-Host "Smartnode BLS Key............: `$bls" -ForegroundColor Green
