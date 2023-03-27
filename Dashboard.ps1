@@ -4,6 +4,9 @@
 
 $raptoreumcli = $env:raptoreumcli
 
+
+
+
 while ($true) {
 # Get informations
 $blockHeight = cmd /C "$raptoreumcli getblockcount" | ConvertFrom-Json
@@ -14,6 +17,8 @@ $connectionCount = cmd /C "$raptoreumcli getconnectioncount" | ConvertFrom-Json
 $smartnodeTotal = cmd /C "$raptoreumcli smartnodelist status"
 $smartnodeList = cmd /C "$raptoreumcli smartnodelist status ENABLED"
 $smartnodeStatus = cmd /C "$raptoreumcli smartnode status" | ConvertFrom-Json
+$networkHeight = Get-Number ((Invoke-WebRequest -Uri "https://explorer.raptoreum.com/api/getblockcount" -UseBasicParsing).Content)
+$latest = Invoke-RestMethod -Uri "https://api.github.com/repos/Raptor3um/raptoreum/releases/latest"
 
 Clear-Host
 # Display informations
@@ -22,12 +27,12 @@ Write-Host "`nRaptoreum Dashboard Pro 9000 Plus" -ForegroundColor Yellow
 Write-Host "`r----------------------------------" -ForegroundColor Cyan
 Write-Host "`rChain........................: $($networkInfo.chain)" -ForegroundColor Green
 Write-Host "`rLocal block height...........: $blockHeight" -ForegroundColor Green
-Write-Host "`rNetwork block height.........: ..." -ForegroundColor Green
+Write-Host "`rNetwork block height.........: $networkHeight" -ForegroundColor Green
 Write-Host "`rTotal Smartnodes.............: $($smartnodeTotal.count)" -ForegroundColor Green
 Write-Host "`rActive Smartnodes............: $($smartnodeList.count)" -ForegroundColor Green
 Write-Host "`r----------------------------------" -ForegroundColor Cyan
 Write-Host "`rLocal version................: ..." -ForegroundColor Green
-Write-Host "`rAvailable version............: ..." -ForegroundColor Green
+Write-Host "`rAvailable version............: $($latest.tag_name)" -ForegroundColor Green
 Write-Host "`rSmartnode connections........: $($connectionCount)" -ForegroundColor Green
 Write-Host "`rTransactions in mempool......: $($mempoolInfo.size)" -ForegroundColor Green
 Write-Host "`rMempool size in Mb...........: $([math]::Round($mempoolInfo.bytes / 1MB, 3)) Mb" -ForegroundColor Green
