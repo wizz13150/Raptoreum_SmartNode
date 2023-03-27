@@ -7,7 +7,7 @@ Download or Copy "[SmartNode_Install.bat](https://github.com/wizz13150/Raptoreum
 
 It will install Raptoreum binaries, 7-Zip, NSSM, LogrotateWin, configure basic firewall settings, create a daemon service (RTMService) to control raptoreumd process, and also create scheduled tasks that will check on daemon and Smartnode's health every 20 minutes and backup the chain every month. It also has a bootstrap option for quick syncing.
 
-2 shortcuts will be created on the desktop to open a bash with the SmartNode, and to update the Smartnode.
+3 shortcuts will be created on the desktop for a Dashboard, to open a bash with the SmartNode, and to update the Smartnode.
 
 This script use custom paths. You can install and run a standard QT wallet (Not recommended!!), the Smartnode will run in a parallel environment :
 ```
