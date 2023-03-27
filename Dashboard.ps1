@@ -18,12 +18,12 @@ $smartnodeStatus = cmd /C "$raptoreumcli smartnode status" | ConvertFrom-Json
 
 Clear-Host
 # Display informations
-Write-Host -NoNewline "`r--------------------------------------------" -ForegroundColor Cyan
+Write-Host -NoNewline "`r----------------------------------" -ForegroundColor Cyan
 Write-Host "`nRaptoreum Dashboard Pro 9000 Plus Supreme" -ForegroundColor Yellow
 Write-Host "`nMega Championship Edition Collector Deluxe" -ForegroundColor Yellow
 Write-Host "`nHyper Turbo Interstellar Ultimate Galaxy" -ForegroundColor Yellow
 Write-Host "`nGrandmaster Battlestation of the Multiverse" -ForegroundColor Yellow
-Write-Host "`r--------------------------------------------" -ForegroundColor Cyan
+Write-Host "`r----------------------------------" -ForegroundColor Cyan
 Write-Host "`rChain........................: $($networkInfo.chain)" -ForegroundColor Green
 Write-Host "`rLocal block height...........: $blockHeight" -ForegroundColor Green
 Write-Host "`rNetwork block height.........: ..." -ForegroundColor Green
@@ -49,6 +49,7 @@ Write-Host "`rLast revived height..........: $($smartnodeStatus.dmnState.PoSeRev
 Write-Host "`r----------------------------------" -ForegroundColor Cyan
 Write-Host "`rTotal received...............: $([math]::Round($getnettotals.totalbytesrecv / 1MB)) Mb" -ForegroundColor Green
 Write-Host "`rTotal sent...................: $([math]::Round($getnettotals.totalbytessent / 1MB, 0)) Mb" -ForegroundColor Green
+
 
 # Countdown to refresh
 $seconds = 10
