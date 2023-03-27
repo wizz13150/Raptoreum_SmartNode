@@ -257,7 +257,7 @@ function Create-Conf {
     )
     if (-not [string]::IsNullOrEmpty($QuickSetup)) {
         do {
-            $global:smartnodeblsprivkey = Read-Host -Prompt "Enter your SmartNode BLS Privkey (operatorSecret) "
+            $global:smartnodeblsprivkey = Read-Host -Prompt "Enter your SmartNode BLS Privkey (operatorSecret)"
             if ($global:smartnodeblsprivkey.Length -ne 64) {
                 Write-Host "  The BLS must be exactly 64 characters long, please check your BLS..." -ForegroundColor Yellow
             }
@@ -648,7 +648,7 @@ function Schedule-Jobs {
     $chainbackupScriptPath = "$env:USERPROFILE\chainbackup_testnet.bat"
     if (-not [string]::IsNullOrEmpty($QuickSetup)) {
         do {
-            $global:protxHash = Read-Host -Prompt "Please enter your protx hash for this SmartNode (txid) "
+            $global:protxHash = Read-Host -Prompt "Please enter your protx hash for this SmartNode (txid)"
             if ($global:protxHash.Length -ne 64) {
                 Write-Host "  The proTX must be 64 characters long, please check your proTX..." -ForegroundColor Yellow
             }
