@@ -568,7 +568,7 @@ Start-Sleep -Seconds 30
 powershell.exe -ExecutionPolicy Bypass -File "%USERPROFILE%\dashboard_testnet.ps1"
 "@
     Set-Content -Path "$env:USERPROFILE\dashboard_testnet.ps1" -Value $dashboard -ErrorAction SilentlyContinue -Force
-    et-Content -Path "$env:USERPROFILE\dashboard_testnet.bat" -Value $dashboardBatch -ErrorAction SilentlyContinue -Force
+    Set-Content -Path "$env:USERPROFILE\dashboard_testnet.bat" -Value $dashboardBatch -ErrorAction SilentlyContinue -Force
     Write-CurrentTime; Write-Host "  Script created: `%USERPROFILE%\dashboard_testnet.ps1..." -ForegroundColor Yellow
     Start-Sleep -Seconds 1
 }
