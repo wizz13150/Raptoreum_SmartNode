@@ -559,7 +559,7 @@ Write-Host "`rLast revived height..........: `$(`$smartnodeStatus.dmnState.PoSeR
 Write-Host "`r----------------------------------" -ForegroundColor Cyan
 Write-Host "`rTotal received...............: `$([math]::Round(`$getnettotals.totalbytesrecv / 1MB)) Mb" -ForegroundColor Green
 Write-Host "`rTotal sent...................: `$([math]::Round(`$getnettotals.totalbytessent / 1MB, 0)) Mb" -ForegroundColor Green
-Start-Sleep -Seconds 25
+Start-Sleep -Seconds 30
 "Refreshing..."
 }
 "@
