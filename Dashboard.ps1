@@ -6,33 +6,15 @@
 $raptoreumcli = $env:raptoreumcli
 
 while ($true) {
-# cli commands to run parallel
-$commands = @(
-    { param($raptoreumcli) cmd /C "$raptoreumcli getblockcount" | ConvertFrom-Json },
-    { param($raptoreumcli) cmd /C "$raptoreumcli getmempoolinfo" | ConvertFrom-Json },
-    { param($raptoreumcli) cmd /C "$raptoreumcli getblockchaininfo" | ConvertFrom-Json },
-    { param($raptoreumcli) cmd /C "$raptoreumcli getwalletinfo" | ConvertFrom-Json },
-    { param($raptoreumcli) cmd /C "$raptoreumcli getconnectioncount" | ConvertFrom-Json },
-    { param($raptoreumcli) cmd /C "$raptoreumcli listaddressbalances" },
-    { param($raptoreumcli) cmd /C "$raptoreumcli smartnodelist status ENABLED" },
-    { param($raptoreumcli) cmd /C "$raptoreumcli smartnode status" | ConvertFrom-Json }
-)
-# Start parallel jobs
-$jobs = $commands | ForEach-Object {
-    Start-Job -ScriptBlock $_ -ArgumentList $raptoreumcli
-}
-$jobs | Wait-Job
-$results = $jobs | Receive-Job
-$jobs | Remove-Job
-# Get informations back to vars
-$blockHeight = $results[0]
-$mempoolInfo = $results[1]
-$networkInfo = $results[2]
-$walletInfo = $results[3]
-$connectionCount = $results[4]
-$listAddress = $results[5]
-$smartnodeList = $results[6]
-$smartnodeStatus = $results[7]
+# Get informations
+$blockHeight = cmd /C "$raptoreumcli getblockcount" | ConvertFrom-Json
+$mempoolInfo = cmd /C "$raptoreumcli getmempoolinfo" | ConvertFrom-Json
+$networkInfo = cmd /C "$raptoreumcli getblockchaininfo" | ConvertFrom-Json
+$getnettotals = cmd /C "$raptoreumcli getnettotals" | ConvertFrom-Json
+$connectionCount = cmd /C "$raptoreumcli getconnectioncount" | ConvertFrom-Json
+$smartnodeTotal = cmd /C "$raptoreumcli smartnodelist status"
+$smartnodeList = cmd /C "$raptoreumcli smartnodelist status ENABLED"
+$smartnodeStatus = cmd /C "$raptoreumcli smartnode status" | ConvertFrom-Json
 
 Clear-Host
 # Display informations
@@ -40,18 +22,33 @@ Write-Host -NoNewline "`r----------------------------------" -ForegroundColor Cy
 Write-Host "`nRaptoreum Dashboard Pro 9000 Plus" -ForegroundColor Yellow
 Write-Host "`r----------------------------------" -ForegroundColor Cyan
 Write-Host "`rChain........................: $($networkInfo.chain)" -ForegroundColor Green
-Write-Host "`rCurrent block height.........: $blockHeight" -ForegroundColor Green
+Write-Host "`rLocal block height...........: $blockHeight" -ForegroundColor Green
+Write-Host "`rNetwork block height.........: ..." -ForegroundColor Green
+Write-Host "`rTotal Smartnodes.............: $($smartnodeTotal.count)" -ForegroundColor Green
 Write-Host "`rActive Smartnodes............: $($smartnodeList.count)" -ForegroundColor Green
 Write-Host "`r----------------------------------" -ForegroundColor Cyan
-Write-Host "`rSmartnode addresses..........: $($listAddress.count)" -ForegroundColor Green
-Write-Host "`rSmartnode transactions.......: $($walletInfo.txcount)" -ForegroundColor Green
+Write-Host "`rLocal version................: ..." -ForegroundColor Green
+Write-Host "`rAvailable version............: ..." -ForegroundColor Green
 Write-Host "`rSmartnode connections........: $($connectionCount)" -ForegroundColor Green
-Write-Host "`rMempool size.................: $($mempoolInfo.size)" -ForegroundColor Green
+Write-Host "`rTransactions in mempool......: $($mempoolInfo.size)" -ForegroundColor Green
+Write-Host "`rMempool size in Mb...........: $([math]::Round($mempoolInfo.bytes / 1MB, 3)) Mb" -ForegroundColor Green
 Write-Host "`r----------------------------------" -ForegroundColor Cyan
 Write-Host "`rSmartnode status.............: $($smartnodeStatus.status)" -ForegroundColor Green
-Write-Host "`rIP address and port..........: $($smartnodeStatus.addr)" -ForegroundColor Green
-Write-Host "`rPayee........................: $($smartnodeStatus.payee)" -ForegroundColor Green
+Write-Host "`rIP address and port..........: $($smartnodeStatus.service)" -ForegroundColor Green
+Write-Host "`rSmartnode ProTX..............: $($smartnodeStatus.proTxHash)" -ForegroundColor Green
+Write-Host "`rSmartnode BLS Key............: ..." -ForegroundColor Green
+Write-Host "`rPayout address...............: $($smartnodeStatus.dmnState.payoutAddress)" -ForegroundColor Green
+Write-Host "`rRegistered height............: $($smartnodeStatus.dmnState.registeredHeight)" -ForegroundColor Green
+Write-Host "`rCurrent PoSe score...........: $($smartnodeStatus.dmnState.PoSePenalty)" -ForegroundColor Green
+Write-Host "`rTime to PoSe Score 0.........: $(($smartnodeStatus.dmnState.PoSePenalty) * 4) min" -ForegroundColor Green
+Write-Host "`rPoSe ban height..............: $($smartnodeStatus.dmnState.PoSeBanHeight)" -ForegroundColor Green
+Write-Host "`rLast revived height..........: $($smartnodeStatus.dmnState.PoSeRevivedHeight)" -ForegroundColor Green
 Write-Host "`r----------------------------------" -ForegroundColor Cyan
+Write-Host "`rTotal received...............: $([math]::Round($getnettotals.totalbytesrecv / 1MB)) Mb" -ForegroundColor Green
+Write-Host "`rTotal sent...................: $([math]::Round($getnettotals.totalbytessent / 1MB, 0)) Mb" -ForegroundColor Green
+
+$getnettotals.uploadtarget
+
 
 # Countdown to refresh
 $seconds = 10
