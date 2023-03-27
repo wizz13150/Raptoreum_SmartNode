@@ -540,9 +540,7 @@ if (`$first -eq `$Null) {
 `$proTX = (Get-Content "`$env:USERPROFILE\check_testnet.ps1" | Where-Object { `$_ -like "*NODE_PROTX =*" }) -replace ".*NODE_PROTX\s*=\s*", "" -replace '^"|"`$', ''
 `$systemStabilityIndex = Get-WmiObject -Class Win32_ReliabilityStabilityMetrics | Select-Object -ExpandProperty SystemStabilityIndex -First 1
 `$os = Get-CimInstance -ClassName Win32_OperatingSystem
-[int]`$memoryUsed = (`$os.TotalVisibleMemorySize - `$os.FreePhysicalMemory) / `$os.TotalVisibleMemorySize * 100
 `$cpuUsage = (Get-CimInstance -ClassName Win32_PerfFormattedData_PerfOS_Processor | Where-Object { `$_.Name -eq "_Total" }).PercentProcessorTime
-`$os = Get-CimInstance -ClassName Win32_OperatingSystem
 
 Clear-Host
 # Display informations
