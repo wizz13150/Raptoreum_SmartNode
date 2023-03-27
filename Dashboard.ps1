@@ -2,7 +2,6 @@
 ######## Smartnode Dashboard ########
 #####################################
 
-# Define Raptoreum-cli
 $raptoreumcli = $env:raptoreumcli
 
 while ($true) {
@@ -48,25 +47,6 @@ Write-Host "`r----------------------------------" -ForegroundColor Cyan
 Write-Host "`rTotal received...............: $([math]::Round($getnettotals.totalbytesrecv / 1MB)) Mb" -ForegroundColor Green
 Write-Host "`rTotal sent...................: $([math]::Round($getnettotals.totalbytessent / 1MB, 0)) Mb" -ForegroundColor Green
 
-
-# Countdown to refresh
-$seconds = 10
-$t = New-TimeSpan -Seconds 10
-$origpos = $host.UI.RawUI.CursorPosition
-$spinner =@('|', '/', '-', '\')
-$spinnerPos = 0
-$remain = $t
-$d =( get-date) + $t
-$remain = ($d - (get-date))
-while ($remain.TotalSeconds -gt 0){
-  Write-Host (" {0} " -f $spinner[$spinnerPos%4]) -BackgroundColor White -ForegroundColor Black -NoNewline
-  write-host (" {0}s " -f $remain.Seconds)
-  $host.UI.RawUI.CursorPosition = $origpos
-  $spinnerPos += 1
-  Start-Sleep -seconds 1
-  $remain = ($d - (get-date))
-}
-$host.UI.RawUI.CursorPosition = $origpos
-Write-Host " * "  -BackgroundColor White -ForegroundColor Black -NoNewline
+Start-Sleep -Seconds 10
 "Refreshing..."
 }
