@@ -625,7 +625,7 @@ Write-Host ""
 `$endTime = (Get-Date).AddSeconds(30)
 while ((Get-Date) -lt `$endTime) {
     `$remainingSeconds = [math]::Ceiling((`$endTime - (Get-Date)).TotalSeconds)
-    Write-Host -NoNewline "`r`$(`$spinner[`$spinnerPos % 4]) Refresh in `$(`$remainingSeconds)" -BackgroundColor White -ForegroundColor Black
+    Write-Host -NoNewline "`r`$(`$spinner[`$spinnerPos % 4]) Refresh in `$("{0:00}" -f `$remainingSeconds)" -BackgroundColor White -ForegroundColor Black
     `$spinnerPos++
     Start-Sleep -Seconds 1
 } Write-Host -NoNewline "`r * Refreshing..."
