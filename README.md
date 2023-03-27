@@ -1,7 +1,7 @@
 NOT OFFICIAL, NOT RELATED TO THE RAPTOREUM CORE TEAM
 
 # Raptoreum SmartNode for Windows
-Transcript of [dk808/Raptoreum_SmartNode](https://github.com/dk808/Raptoreum_SmartNode) for Windows. Do the same job.
+Customized transcript of [dk808/Raptoreum_SmartNode](https://github.com/dk808/Raptoreum_SmartNode) for Windows. Do the same job.
 
 Download or Copy "[SmartNode_Install.bat](https://github.com/wizz13150/Raptoreum_SmartNode/blob/main/SmartNode_Install.bat)" and run it.
 
