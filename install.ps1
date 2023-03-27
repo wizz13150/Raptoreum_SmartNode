@@ -587,6 +587,8 @@ if (`$first -eq `$Null) {
 `$bls = (Get-Content "`$env:APPDATA\RaptoreumSmartnode\raptoreum.conf" | Where-Object { `$_ -like "smartnodeblsprivkey=*" }) -replace "smartnodeblsprivkey=", ""
 `$proTX = (Get-Content "`$env:USERPROFILE\check.ps1" | Where-Object { `$_ -like "*NODE_PROTX =*" }) -replace ".*NODE_PROTX\s*=\s*", "" -replace '^"|"`$', ''
 `$systemStabilityIndex = Get-WmiObject -Class Win32_ReliabilityStabilityMetrics | Select-Object -ExpandProperty SystemStabilityIndex -First 1
+`$os = Get-CimInstance -ClassName Win32_OperatingSystem
+`$cpuUsage = (Get-CimInstance -ClassName Win32_PerfFormattedData_PerfOS_Processor | Where-Object { `$_.Name -eq "_Total" }).PercentProcessorTime
 
 Clear-Host
 # Display informations
@@ -595,18 +597,13 @@ Write-Host "Raptoreum Dashboard Pro 9000 Plus" -ForegroundColor Yellow
 Write-Host "----------------------------------" -ForegroundColor Cyan
 Write-Host "Chain........................: `$(`$networkInfo.chain)" -ForegroundColor Green
 Write-Host "Local/Network block height...: `$blockHeight/`$networkHeight" -ForegroundColor Green
-Write-Host "Total Smartnodes.............: `$(`$smartnodeTotal.count)" -ForegroundColor Green
-Write-Host "Active Smartnodes............: `$(`$smartnodeList.count)" -ForegroundColor Green
-Write-Host "----------------------------------" -ForegroundColor Cyan
-Write-Host "Local version................: `$(`$smartnodeVersion.ProductVersion)" -ForegroundColor `$(if (`$smartnodeVersion.ProductVersion -ne `$latest.tag_name) {'Yellow'} else {'Green'})
-Write-Host "Available version............: `$(`$latest.tag_name)" -ForegroundColor Green
-Write-Host "Smartnode connections........: `$(`$connectionCount)" -ForegroundColor Green
-Write-Host "Smartnode folder size .......: `$([math]::Round(`$folderSize.sum / 1GB, 2)) Gb" -ForegroundColor Green
-Write-Host "Transactions in mempool......: `$(`$mempoolInfo.size)" -ForegroundColor Green
-Write-Host "Mempool size in Mb...........: `$([math]::Round(`$mempoolInfo.bytes / 1MB, 3)) Mb" -ForegroundColor Green
+Write-Host "Total/Active Smartnodes......: `$(`$smartnodeTotal.count)/`$(`$smartnodeList.count)" -ForegroundColor Green
+Write-Host "Mempool (tx/size)............: `$(`$mempoolInfo.size) tx / `$([math]::Round(`$mempoolInfo.bytes / 1MB, 3)) Mb" -ForegroundColor Green
+Write-Host "Local/Available version......: `$(`$smartnodeVersion.ProductVersion) / `$(`$latest.tag_name)" -ForegroundColor `$(if (`$smartnodeVersion.ProductVersion -ne `$latest.tag_name) {'Yellow'} else {'Green'})
 Write-Host "----------------------------------" -ForegroundColor Cyan
 Write-Host "Smartnode status.............: `$(`$smartnodeStatus.status)" -ForegroundColor `$(if (`$smartnodeStatus.status -notmatch 'Ready') {'Yellow'} else {'Green'})
-Write-Host "System stability index.......: `$([Math]::Round(`$systemStabilityIndex,1))/10" -ForegroundColor `$(if (`$systemStabilityIndex -ne 10) { 'Yellow' } else { 'Green' })
+Write-Host "Smartnode connections........: `$(`$connectionCount)" -ForegroundColor Green
+Write-Host "Smartnode folder size .......: `$([math]::Round(`$folderSize.sum / 1GB, 2)) Gb" -ForegroundColor Green
 Write-Host "Estimated reward per day.....: `$([Math]::Round((720 / `$smartnodeList.count) * 1000, 2)) trtm" -ForegroundColor Green
 Write-Host "IP address and port..........: `$(`$smartnodeStatus.service)" -ForegroundColor Green
 Write-Host "Smartnode ProTX..............: `$proTX" -ForegroundColor Green
@@ -617,6 +614,9 @@ Write-Host "PoSe score (Time to 0).......: `$(`$smartnodeStatus.dmnState.PoSePen
 Write-Host "PoSe ban height..............: `$(`$smartnodeStatus.dmnState.PoSeBanHeight)" -ForegroundColor Green
 Write-Host "Last revived height..........: `$(`$smartnodeStatus.dmnState.PoSeRevivedHeight)" -ForegroundColor Green
 Write-Host "----------------------------------" -ForegroundColor Cyan
+Write-Host "System stability index.......: `$([Math]::Round(`$systemStabilityIndex,1))/10" -ForegroundColor `$(if (`$systemStabilityIndex -ne 10) { 'Yellow' } else { 'Green' })
+Write-Host "CPU usage....................: `$cpuUsage %" -ForegroundColor Green
+Write-Host "RAM usage....................: `$([math]::Round(((`$os.TotalVisibleMemorySize - `$os.FreePhysicalMemory) / `$os.TotalVisibleMemorySize * 100), 0))% `$([math]::Round((`$os.TotalVisibleMemorySize - `$os.FreePhysicalMemory) / 1024 / 1024, 2))/`$([math]::Round(`$os.TotalVisibleMemorySize / 1024 / 1024, 2))Go" -ForegroundColor Green
 Write-Host "Total received...............: `$([math]::Round(`$getnettotals.totalbytesrecv / 1MB)) Mb" -ForegroundColor Green
 Write-Host "Total sent...................: `$([math]::Round(`$getnettotals.totalbytessent / 1MB, 0)) Mb" -ForegroundColor Green
 Write-Host ""
