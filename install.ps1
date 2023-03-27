@@ -559,18 +559,27 @@ powershell.exe -ExecutionPolicy Bypass -File "%USERPROFILE%\update.ps1"
 function Dashboard-Script {
     Write-CurrentTime; Write-Host "  Creating the Dashboard script..." -ForegroundColor Cyan
     $dashboard = @"
-`$raptoreumcli = `$env:raptoreumcli
-
+`$first = `$Null
 while (`$true) {
+# First run
+if (`$first -eq `$Null) {
+    `$first = "1"
+    Write-Host "----------------------------------" -ForegroundColor Cyan
+    Write-Host "Raptoreum Dashboard Pro 9000 Plus" -ForegroundColor Yellow
+    Write-Host "----------------------------------" -ForegroundColor Cyan
+    Write-Host ""
+    Write-Host "Gathering informations... " -ForegroundColor Green
+    Write-Host "Be patient..."
+}
 # Get informations
-`$blockHeight = cmd /C "`$raptoreumcli getblockcount" | ConvertFrom-Json
-`$mempoolInfo = cmd /C "`$raptoreumcli getmempoolinfo" | ConvertFrom-Json
-`$networkInfo = cmd /C "`$raptoreumcli getblockchaininfo" | ConvertFrom-Json
-`$getnettotals = cmd /C "`$raptoreumcli getnettotals" | ConvertFrom-Json
-`$connectionCount = cmd /C "`$raptoreumcli getconnectioncount" | ConvertFrom-Json
-`$smartnodeTotal = cmd /C "`$raptoreumcli smartnodelist status"
-`$smartnodeList = cmd /C "`$raptoreumcli smartnodelist status ENABLED"
-`$smartnodeStatus = cmd /C "`$raptoreumcli smartnode status" | ConvertFrom-Json
+`$blockHeight = cmd /C "`$env:raptoreumcli getblockcount" | ConvertFrom-Json
+`$mempoolInfo = cmd /C "`$env:raptoreumcli getmempoolinfo" | ConvertFrom-Json
+`$networkInfo = cmd /C "`$env:raptoreumcli getblockchaininfo" | ConvertFrom-Json
+`$getnettotals = cmd /C "`$env:raptoreumcli getnettotals" | ConvertFrom-Json
+`$connectionCount = cmd /C "`$env:raptoreumcli getconnectioncount" | ConvertFrom-Json
+`$smartnodeTotal = cmd /C "`$env:raptoreumcli smartnodelist status"
+`$smartnodeList = cmd /C "`$env:raptoreumcli smartnodelist status ENABLED"
+`$smartnodeStatus = cmd /C "`$env:raptoreumcli smartnode status" | ConvertFrom-Json
 `$networkHeight = (Invoke-WebRequest -Uri "https://explorer.raptoreum.com/api/getblockcount" -UseBasicParsing).Content
 `$latest = Invoke-RestMethod -Uri "https://api.github.com/repos/Raptor3um/raptoreum/releases/latest"
 `$smartnodeVersion = Get-Item "`$env:ProgramFiles (x86)\RaptoreumCore\raptoreumd.exe" -ErrorAction SilentlyContinue| Get-ItemProperty | Select-Object -ExpandProperty VersionInfo
@@ -602,16 +611,24 @@ Write-Host "`rSmartnode ProTX..............: `$proTx" -ForegroundColor Green
 Write-Host "`rSmartnode BLS Key............: `$bls" -ForegroundColor Green
 Write-Host "`rPayout address...............: `$(`$smartnodeStatus.dmnState.payoutAddress)" -ForegroundColor Green
 Write-Host "`rRegistered height............: `$(`$smartnodeStatus.dmnState.registeredHeight)" -ForegroundColor Green
-Write-Host "`rCurrent PoSe score...........: `$(`$smartnodeStatus.dmnState.PoSePenalty)" -ForegroundColor Green
-Write-Host "`rTime to PoSe Score 0.........: `$([math]::Floor(((`$smartnodeStatus.dmnState.PoSePenalty) * 4) / 60))h `$((`$smartnodeStatus.dmnState.PoSePenalty) * 4 % 60)min" -ForegroundColor Green
+Write-Host "`rPoSe score (Time to 0).......: `$(`$smartnodeStatus.dmnState.PoSePenalty) (`$([math]::Floor(((`$smartnodeStatus.dmnState.PoSePenalty) * 4) / 60))h `$((`$smartnodeStatus.dmnState.PoSePenalty) * 4 % 60)min)" -ForegroundColor Green
 Write-Host "`rPoSe ban height..............: `$(`$smartnodeStatus.dmnState.PoSeBanHeight)" -ForegroundColor Green
 Write-Host "`rLast revived height..........: `$(`$smartnodeStatus.dmnState.PoSeRevivedHeight)" -ForegroundColor Green
 Write-Host "`r----------------------------------" -ForegroundColor Cyan
 Write-Host "`rTotal received...............: `$([math]::Round(`$getnettotals.totalbytesrecv / 1MB)) Mb" -ForegroundColor Green
 Write-Host "`rTotal sent...................: `$([math]::Round(`$getnettotals.totalbytessent / 1MB, 0)) Mb" -ForegroundColor Green
+Write-Host ""
 
-Start-Sleep -Seconds 30
-"Refreshing..."
+# Countdown to refresh
+`$spinner = @('|', '/', '-', '\')
+`$spinnerPos = 0
+`$endTime = (Get-Date).AddSeconds(30)
+while ((Get-Date) -lt `$endTime) {
+    `$remainingSeconds = [math]::Ceiling((`$endTime - (Get-Date)).TotalSeconds)
+    Write-Host -NoNewline "`r`$(`$spinner[`$spinnerPos % 4]) Refresh in `$(`$remainingSeconds)" -BackgroundColor White -ForegroundColor Black
+    `$spinnerPos++
+    Start-Sleep -Seconds 1
+} Write-Host -NoNewline "`r * Refreshing..."
 }
 "@
     $dashboardBatch = @"
