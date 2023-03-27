@@ -38,9 +38,17 @@ Launcher :
 
 ![image](https://user-images.githubusercontent.com/22177081/227794280-233f529c-b8c1-4fe0-9ec5-8fc0f7c42809.png)
 
+Bash :
+
+![image](https://user-images.githubusercontent.com/22177081/227836037-95e93c57-6eaa-4c7a-b7b5-ca7b80bb65d4.png)
+
 Dashboard :
 
 ![image](https://user-images.githubusercontent.com/22177081/227835634-c6d1a8c2-d355-403c-b1ef-b76cb5c8fc31.png)
+
+Update :
+
+![image](https://user-images.githubusercontent.com/22177081/227836121-8f98df5d-39c5-4032-b757-72a56ef0d753.png)
 
 
 > ℹ Info: Script will run as admin. Script will ask for BLS PrivKey(operatorSecret) and ProtXHash(txid) that you get from the protx quick_setup/bls generate command. So have it ready. This will also create a script to update binaries.
