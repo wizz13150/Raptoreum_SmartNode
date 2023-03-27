@@ -50,9 +50,6 @@ Write-Host "`r----------------------------------" -ForegroundColor Cyan
 Write-Host "`rTotal received...............: $([math]::Round($getnettotals.totalbytesrecv / 1MB)) Mb" -ForegroundColor Green
 Write-Host "`rTotal sent...................: $([math]::Round($getnettotals.totalbytessent / 1MB, 0)) Mb" -ForegroundColor Green
 
-$getnettotals.uploadtarget
-
-
 # Countdown to refresh
 $seconds = 10
 $t = New-TimeSpan -Seconds 10
