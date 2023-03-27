@@ -274,9 +274,12 @@ function Create-Conf {
     )
     # Force user to provide BLS key.
     if (-not [string]::IsNullOrEmpty($QuickSetup)) {
-        while ([string]::IsNullOrEmpty($global:smartnodeblsprivkey)) {
-            $global:smartnodeblsprivkey = Read-Host -Prompt "Enter your SmartNode BLS Privkey "
-        }
+        do {
+            $global:smartnodeblsprivkey = Read-Host -Prompt "Enter your SmartNode BLS Privkey (operatorSecret)"
+            if ($global:smartnodeblsprivkey.Length -ne 64) {
+                Write-Host "  The BLS must be exactly 64 characters long, please check your BLS..." -ForegroundColor Yellow
+            }
+        } until ($global:smartnodeblsprivkey.Length -eq 64)
         return
     }
     if (Test-Path $configPath) {
@@ -691,8 +694,12 @@ function Schedule-Jobs {
     $checkScriptPath = "$env:USERPROFILE\check.bat"
     $chainbackupScriptPath = "$env:USERPROFILE\chainbackup.bat"
     if (-not [string]::IsNullOrEmpty($QuickSetup)) {
-        $global:PROTX_HASH = Read-Host -Prompt "Please enter your protx hash for this SmartNode (txid) "
-        return
+        do {
+            $global:protxHash = Read-Host -Prompt "Please enter your protx hash for this SmartNode (txid)"
+            if ($global:protxHash.Length -ne 64) {
+                Write-Host "  The proTX must be 64 characters long, please check your proTX..." -ForegroundColor Yellow
+            }
+        } until ($global:protxHash.Length -eq 64)
     }
     $checkUrl = "https://raw.githubusercontent.com/wizz13150/Raptoreum_SmartNode/main/check.ps1"
     Start-BitsTransfer -Source $checkUrl -Destination "$env:USERPROFILE\check.ps1" -DisplayName "Downloading file from $checkUrl"
