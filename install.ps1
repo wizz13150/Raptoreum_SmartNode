@@ -575,7 +575,8 @@ while (`$true) {
 `$latest = Invoke-RestMethod -Uri "https://api.github.com/repos/Raptor3um/raptoreum/releases/latest"
 `$smartnodeVersion = Get-Item "`$env:ProgramFiles (x86)\RaptoreumCore\raptoreumd.exe" -ErrorAction SilentlyContinue| Get-ItemProperty | Select-Object -ExpandProperty VersionInfo
 `$folderSize = Get-ChildItem "`$env:APPDATA\RaptoreumSmartnode" -Recurse -Exclude nodetest | Measure-Object -Property Length -Sum
-`$bls = (Get-Content "`$env:APPDATA\RaptoreumSmartnode\raptoreum.conf" | Where-Object { $_ -like "smartnodeblsprivkey=*" }) -replace "smartnodeblsprivkey=", ""
+`$bls = (Get-Content "`$env:APPDATA\RaptoreumSmartnode\raptoreum.conf" | Where-Object { `$_ -like "smartnodeblsprivkey=*" }) -replace "smartnodeblsprivkey=", ""
+`$proTX = (Get-Content "`$env:USERPROFILE\check.ps1" | Where-Object { `$_ -like "*NODE_PROTX =*" }) -replace ".*NODE_PROTX\s*=\s*", "" -replace '^"|"`$', ''
 
 Clear-Host
 # Display informations
@@ -597,7 +598,7 @@ Write-Host "`r----------------------------------" -ForegroundColor Cyan
 Write-Host "`rSmartnode status.............: `$(`$smartnodeStatus.status)" -ForegroundColor Green
 Write-Host "`rEstimated reward per day.....: ..." -ForegroundColor Green
 Write-Host "`rIP address and port..........: `$(`$smartnodeStatus.service)" -ForegroundColor Green
-Write-Host "`rSmartnode ProTX..............: `$(`$smartnodeStatus.proTxHash)" -ForegroundColor Green
+Write-Host "`rSmartnode ProTX..............: `$proTx" -ForegroundColor Green
 Write-Host "`rSmartnode BLS Key............: `$bls" -ForegroundColor Green
 Write-Host "`rPayout address...............: `$(`$smartnodeStatus.dmnState.payoutAddress)" -ForegroundColor Green
 Write-Host "`rRegistered height............: `$(`$smartnodeStatus.dmnState.registeredHeight)" -ForegroundColor Green
