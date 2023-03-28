@@ -582,7 +582,7 @@ while (`$true) {
     Display-Information 'Smartnode status.............' "`$(`$smartnodeStatus.status)" -Color `$(Get-DataColor (`$smartnodeStatus.status -match 'Ready'))
     Display-Information 'Smartnode connections........' "`$(`$connectionCount)" -Color `$(Get-DataColor (`$connectionCount -gt 8))
     Display-Information 'Smartnode folder size .......' "`$([math]::Round(`$folderSize.sum / 1GB, 2)) Gb"
-    Display-Information 'Estimated reward per day.....' "`$([Math]::Round((720 / `$smartnodeList.count) * 1000, 2)) RTM (+ fees)"
+    Display-Information 'Estimated reward per day.....' "`$([Math]::Round((1440 / `$smartnodeList.count) * 1000, 2)) RTM (+ fees)"
     if (`$lastPaidBlock -ne `$null) {
         `$lastPaidTime = [DateTimeOffset]::FromUnixTimeSeconds(`$lastPaidBlock.time).ToLocalTime().DateTime
         `$timeElapsedDisplay = "{0}d {1}h {2}m" -f `$((Get-Date) - `$lastPaidTime).Days, `$((Get-Date) - `$lastPaidTime).Hours, `$((Get-Date) - `$lastPaidTime).Minutes
