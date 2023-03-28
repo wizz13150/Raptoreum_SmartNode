@@ -622,8 +622,7 @@ Write-Host "Smartnode BLS Key............: `$bls" -ForegroundColor Green
 Write-Host "Payout address...............: `$(`$smartnodeStatus.dmnState.payoutAddress)" -ForegroundColor Green
 Write-Host "Registered height............: `$(`$smartnodeStatus.dmnState.registeredHeight)" -ForegroundColor Green
 Write-Host "PoSe score (Time to 0).......: `$(`$smartnodeStatus.dmnState.PoSePenalty) (`$([math]::Floor(((`$smartnodeStatus.dmnState.PoSePenalty) * 4) / 60))h `$((`$smartnodeStatus.dmnState.PoSePenalty) * 4 % 60)min)" -ForegroundColor Green
-Write-Host "PoSe ban height..............: `$(`$smartnodeStatus.dmnState.PoSeBanHeight)" -ForegroundColor Green
-Write-Host "Last revived height..........: `$(`$smartnodeStatus.dmnState.PoSeRevivedHeight)" -ForegroundColor Green
+Write-Host "PoSe ban/revived height......: `$(`$smartnodeStatus.dmnState.PoSeBanHeight) / `$(`$smartnodeStatus.dmnState.PoSeRevivedHeight)" -ForegroundColor Green
 Write-Host "----------------------------------" -ForegroundColor Cyan
 Write-Host "System stability index.......: `$([Math]::Round(`$systemStabilityIndex,1))/10" -ForegroundColor `$(if (`$systemStabilityIndex -ne 10) { 'Yellow' } else { 'Green' })
 Write-Host "System uptime................: `$("{0}d {1}h {2}m" -f `$uptime.Days, `$uptime.Hours, `$uptime.Minutes)" -ForegroundColor Green
