@@ -593,7 +593,7 @@ while (`$true) {
     Display-Information 'Smartnode BLS Key............' ((Get-Content "`$env:APPDATA\RaptoreumSmartnode\nodetest\raptoreum_testnet.conf" | Where-Object { `$_ -like "smartnodeblsprivkey=*" }) -replace "smartnodeblsprivkey=", "")
     Display-Information 'Payout address...............' `$(`$smartnodeStatus.dmnState.payoutAddress)
     Display-Information 'Registered height............' `$(`$smartnodeStatus.dmnState.registeredHeight)
-    Display-Information 'PoSe score (Time to 0).......' "`$(`$smartnodeStatus.dmnState.PoSePenalty) (`$([math]::Floor((`$smartnodeStatus.dmnState.PoSePenalty) * 4 / 60))h `$(`$smartnodeStatus.dmnState.PoSePenalty * 4 % 60)min)" -Color `$(Get-DataColor (`$smartnodeStatus.dmnState.PoSePenalty -eq 0))
+    Display-Information 'PoSe score (Time to 0).......' "`$(`$smartnodeStatus.dmnState.PoSePenalty) (`$([math]::Floor((`$smartnodeStatus.dmnState.PoSePenalty) * 2 / 60))h `$(`$smartnodeStatus.dmnState.PoSePenalty * 2 % 60)min)" -Color `$(Get-DataColor (`$smartnodeStatus.dmnState.PoSePenalty -eq 0))
     Display-Information 'PoSe ban/revived height......' "`$(`$smartnodeStatus.dmnState.PoSeBanHeight) / `$(`$smartnodeStatus.dmnState.PoSeRevivedHeight)"
     Write-Host "----------------------------------" -ForegroundColor Cyan
     Display-Information 'System stability index.......' "`$([Math]::Round(`$systemStabilityIndex,1))/10" -Color `$(Get-DataColor (`$systemStabilityIndex -eq 10))
