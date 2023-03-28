@@ -526,11 +526,10 @@ if (`$first -eq `$Null) {
 }
 `$blockHeight = cmd /C "`$env:traptoreumcli getblockcount" | ConvertFrom-Json
 `$mempoolInfo = cmd /C "`$env:traptoreumcli getmempoolinfo" | ConvertFrom-Json
-`$networkInfo = cmd /C "`$env:traptoreumcli getblockchaininfo" | ConvertFrom-Json
 `$getnettotals = cmd /C "`$env:traptoreumcli getnettotals" | ConvertFrom-Json
 `$connectionCount = cmd /C "`$env:traptoreumcli getconnectioncount" | ConvertFrom-Json
 `$smartnodeTotal = cmd /C "`$env:traptoreumcli smartnodelist status"
-`$smartnodeList = cmd /C "`$env:traptoreumcli smartnodelist status ENABLED"
+`$smartnodeList = `$smartnodeTotal | Where-Object { `$_ -like "*ENABLED*" }
 `$smartnodeStatus = cmd /C "`$env:traptoreumcli smartnode status" | ConvertFrom-Json
 `$networkHeight = (Invoke-WebRequest -Uri "https://testnet.raptoreum.com/api/getblockcount" -UseBasicParsing).Content
 `$smartnodeVersion = Get-Item "`$env:ProgramFiles (x86)\RaptoreumCore\raptoreumd.exe" -ErrorAction SilentlyContinue| Get-ItemProperty | Select-Object -ExpandProperty VersionInfo
@@ -553,9 +552,8 @@ Clear-Host
 Write-Host "----------------------------------" -ForegroundColor Cyan
 Write-Host "Raptoreum Dashboard Pro 9000 Plus" -ForegroundColor Yellow
 Write-Host "----------------------------------" -ForegroundColor Cyan
-Write-Host "Chain........................: `$(`$networkInfo.chain)" -ForegroundColor Green
 Write-Host "Local/Network block height...: `$blockHeight/`$networkHeight" -ForegroundColor Green
-Write-Host "Total/Active Smartnodes......: `$(`$smartnodeTotal.count)/`$(`$smartnodeList.count)" -ForegroundColor Green
+Write-Host "Active/Total Smartnodes......: `$(`$smartnodeList.count)/`$(`$smartnodeTotal.count) (`$(((`$smartnodeList.count / `$smartnodeTotal.count) * 100).ToString("F1"))%)" -ForegroundColor Green
 Write-Host "Mempool (tx/size)............: `$(`$mempoolInfo.size) tx / `$([math]::Round(`$mempoolInfo.bytes / 1MB, 3)) Mb" -ForegroundColor Green
 Write-Host "Local/Available version......: `$(`$smartnodeVersion.ProductVersion) / `$(`$latest.tag_name)" -ForegroundColor `$(if (`$smartnodeVersion.ProductVersion -ne `$latest.tag_name) {'Yellow'} else {'Green'})
 Write-Host "----------------------------------" -ForegroundColor Cyan
