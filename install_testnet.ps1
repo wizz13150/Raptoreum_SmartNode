@@ -581,6 +581,7 @@ Write-Host "RAM usage....................: `$([math]::Round(((`$os.TotalVisibleM
 Write-Host "Disk usage (Free/Total)......: `$([math]::Round((`$drive.SizeRemaining / 1GB), 2))/`$([math]::Round((`$drive.Size / 1GB), 2)) GB (`$([math]::Round((1 - (`$drive.SizeRemaining / `$drive.Size)) * 100, 0))% used)" -ForegroundColor Green
 Write-Host "Total received...............: `$([math]::Round(`$getnettotals.totalbytesrecv / 1MB)) Mb" -ForegroundColor Green
 Write-Host "Total sent...................: `$([math]::Round(`$getnettotals.totalbytessent / 1MB, 0)) Mb" -ForegroundColor Green
+Write-Host ""
 
 # Countdown to refresh
 `$spinner = @('|', '/', '-', '\')
