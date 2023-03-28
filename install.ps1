@@ -764,8 +764,8 @@ function Schedule-Jobs {
     Unregister-ScheduledTask -TaskName $chainBackupTaskName -Confirm:$false -ErrorAction SilentlyContinue
     # Create trigger for Check task (every 20 minutes)
     $checkTrigger = New-ScheduledTaskTrigger -Once -At (Get-Date).Date.AddMinutes(20) -RepetitionInterval (New-TimeSpan -Minutes 20)
-    # Create trigger for ChainBackup task (monthly)
-    $chainBackupTrigger = New-ScheduledTaskTrigger -Weekly -DaysOfWeek Wednesday -WeeksInterval 4 -At 03:00
+    # Create trigger for ChainBackup task (weekly)
+    $chainBackupTrigger = New-ScheduledTaskTrigger -Weekly -DaysOfWeek Wednesday -WeeksInterval 1 -At 03:00
     $checkLog = "$env:USERPROFILE\check-testnet.log"
     $bootstrapLog = "$env:USERPROFILE\bootstrap-testnet.log"
     $checkAction = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument "-Command `"Start-Process cmd.exe -ArgumentList '/c `"$checkScriptPath`"' -Verb RunAs`" > `"$checkLog`""
