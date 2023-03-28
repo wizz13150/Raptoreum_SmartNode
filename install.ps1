@@ -621,7 +621,7 @@ Write-Host "System stability index.......: `$([Math]::Round(`$systemStabilityInd
 Write-Host "System uptime................: `$("{0}d {1}h {2}m" -f `$uptime.Days, `$uptime.Hours, `$uptime.Minutes)" -ForegroundColor Green
 Write-Host "CPU usage....................: `$cpuUsage %" -ForegroundColor Green
 Write-Host "RAM usage....................: `$([math]::Round(((`$os.TotalVisibleMemorySize - `$os.FreePhysicalMemory) / `$os.TotalVisibleMemorySize * 100), 0))% `$([math]::Round((`$os.TotalVisibleMemorySize - `$os.FreePhysicalMemory) / 1024 / 1024, 2))/`$([math]::Round(`$os.TotalVisibleMemorySize / 1024 / 1024, 2))Go" -ForegroundColor Green
-Write-Host "Disk usage (Free/Total)......: `$([math]::Round((`$drive.SizeRemaining / 1GB), 2))/`$([math]::Round((`$drive.Size / 1GB), 2)) GB (`$([math]::Round((1 - (`$drive.SizeRemaining / `$drive.Size)) * 100, 0))%) used" -ForegroundColor Green
+Write-Host "Disk usage (Free/Total)......: `$([math]::Round((`$drive.SizeRemaining / 1GB), 2))/`$([math]::Round((`$drive.Size / 1GB), 2)) GB (`$([math]::Round((1 - (`$drive.SizeRemaining / `$drive.Size)) * 100, 0))% used)" -ForegroundColor Green
 Write-Host "Total received...............: `$([math]::Round(`$getnettotals.totalbytesrecv / 1MB)) Mb" -ForegroundColor Green
 Write-Host "Total sent...................: `$([math]::Round(`$getnettotals.totalbytessent / 1MB, 0)) Mb" -ForegroundColor Green
 
