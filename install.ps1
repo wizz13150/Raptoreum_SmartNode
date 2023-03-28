@@ -589,6 +589,9 @@ if (`$first -eq `$Null) {
 `$systemStabilityIndex = Get-WmiObject -Class Win32_ReliabilityStabilityMetrics | Select-Object -ExpandProperty SystemStabilityIndex -First 1
 `$os = Get-CimInstance -ClassName Win32_OperatingSystem
 `$cpuUsage = (Get-CimInstance -ClassName Win32_PerfFormattedData_PerfOS_Processor | Where-Object { `$_.Name -eq "_Total" }).PercentProcessorTime
+`$drive = Get-Volume -DriveLetter (Split-Path -Qualifier `$env:APPDATA\RaptoreumSmartnode)[0]
+`$ostime = Get-WmiObject -Class Win32_OperatingSystem
+`$uptime = (Get-Date) - `$ostime.ConvertToDateTime(`$ostime.LastBootUpTime)
 
 Clear-Host
 # Display informations
@@ -615,11 +618,12 @@ Write-Host "PoSe ban height..............: `$(`$smartnodeStatus.dmnState.PoSeBan
 Write-Host "Last revived height..........: `$(`$smartnodeStatus.dmnState.PoSeRevivedHeight)" -ForegroundColor Green
 Write-Host "----------------------------------" -ForegroundColor Cyan
 Write-Host "System stability index.......: `$([Math]::Round(`$systemStabilityIndex,1))/10" -ForegroundColor `$(if (`$systemStabilityIndex -ne 10) { 'Yellow' } else { 'Green' })
+Write-Host "System uptime................: `$("{0}d {1}h {2}m" -f `$uptime.Days, `$uptime.Hours, `$uptime.Minutes)" -ForegroundColor Green
 Write-Host "CPU usage....................: `$cpuUsage %" -ForegroundColor Green
 Write-Host "RAM usage....................: `$([math]::Round(((`$os.TotalVisibleMemorySize - `$os.FreePhysicalMemory) / `$os.TotalVisibleMemorySize * 100), 0))% `$([math]::Round((`$os.TotalVisibleMemorySize - `$os.FreePhysicalMemory) / 1024 / 1024, 2))/`$([math]::Round(`$os.TotalVisibleMemorySize / 1024 / 1024, 2))Go" -ForegroundColor Green
+Write-Host "Disk usage (Free/Total)......: `$([math]::Round((`$drive.SizeRemaining / 1GB), 2))/`$([math]::Round((`$drive.Size / 1GB), 2)) GB (`$([math]::Round((1 - (`$drive.SizeRemaining / `$drive.Size)) * 100, 0))%) used" -ForegroundColor Green
 Write-Host "Total received...............: `$([math]::Round(`$getnettotals.totalbytesrecv / 1MB)) Mb" -ForegroundColor Green
 Write-Host "Total sent...................: `$([math]::Round(`$getnettotals.totalbytessent / 1MB, 0)) Mb" -ForegroundColor Green
-Write-Host ""
 
 # Countdown to refresh
 `$spinner = @('|', '/', '-', '\')
