@@ -40,11 +40,11 @@ Launcher :
 
 Bash :
 
-![image](https://user-images.githubusercontent.com/22177081/227836037-95e93c57-6eaa-4c7a-b7b5-ca7b80bb65d4.png)
+![image](https://user-images.githubusercontent.com/22177081/228194914-7186d371-b9d2-455d-bedc-2c05418018bc.png)
 
 Dashboard :
 
-![image](https://user-images.githubusercontent.com/22177081/227835634-c6d1a8c2-d355-403c-b1ef-b76cb5c8fc31.png)
+![image](https://user-images.githubusercontent.com/22177081/228194702-28d54c9c-2911-4f67-8e33-4b8df02fc4c1.png)
 
 Update :
 
