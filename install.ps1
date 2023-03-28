@@ -581,7 +581,6 @@ if (`$first -eq `$Null) {
 `$smartnodeList = cmd /C "`$env:raptoreumcli smartnodelist status ENABLED"
 `$smartnodeStatus = cmd /C "`$env:raptoreumcli smartnode status" | ConvertFrom-Json
 `$networkHeight = (Invoke-WebRequest -Uri "https://explorer.raptoreum.com/api/getblockcount" -UseBasicParsing).Content
-`$latest = Invoke-RestMethod -Uri "https://api.github.com/repos/Raptor3um/raptoreum/releases/latest"
 `$smartnodeVersion = Get-Item "`$env:ProgramFiles (x86)\RaptoreumCore\raptoreumd.exe" -ErrorAction SilentlyContinue| Get-ItemProperty | Select-Object -ExpandProperty VersionInfo
 `$folderSize = Get-ChildItem "`$env:APPDATA\RaptoreumSmartnode" -Recurse -Exclude nodetest | Measure-Object -Property Length -Sum
 `$bls = (Get-Content "`$env:APPDATA\RaptoreumSmartnode\raptoreum.conf" | Where-Object { `$_ -like "smartnodeblsprivkey=*" }) -replace "smartnodeblsprivkey=", ""
@@ -595,6 +594,7 @@ if (`$first -eq `$Null) {
 `$lastPaidBlockHash = cmd /C "`$env:raptoreumcli getblockhash `$(`$smartnodeStatus.dmnState.lastPaidHeight)" #| ConvertFrom-Json
 `$lastPaidBlock = cmd /C "`$env:raptoreumcli getblock `$lastPaidBlockHash" | ConvertFrom-Json
 `$smartnodeRewardTx = cmd /C "`$env:raptoreumcli getrawtransaction `$(`$lastPaidBlock.tx[0]) 1" | ConvertFrom-Json
+`$latest = Invoke-RestMethod -Uri "https://api.github.com/repos/Raptor3um/raptoreum/releases/latest"
 
 Clear-Host
 # Display informations
