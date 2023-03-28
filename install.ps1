@@ -559,96 +559,118 @@ powershell.exe -ExecutionPolicy Bypass -File "%USERPROFILE%\update.ps1"
 function Dashboard-Script {
     Write-CurrentTime; Write-Host "  Creating the Dashboard script..." -ForegroundColor Cyan
     $dashboard = @"
-`$first = `$Null
+function Get-DataColor(`$condition, `$trueColor = 'Green', `$falseColor = 'Yellow') {
+    if (`$condition) { return `$trueColor } else { return `$falseColor }
+}
+function Display-Information(`$message, `$value, `$color = 'Green') {
+    Write-Host "`$message : `$value" -ForegroundColor `$color
+}
+`$first = `$true
 while (`$true) {
-# First run
-if (`$first -eq `$Null) {
-    `$first = "1"
+    if (`$first) {        
+        Write-Host "----------------------------------" -ForegroundColor Cyan
+        Write-Host "Raptoreum Dashboard Pro 9000 Plus" -ForegroundColor Yellow
+        Write-Host "----------------------------------" -ForegroundColor cyan
+        Write-Host 'Gathering informations... ' -ForegroundColor Green
+        Write-Host 'This will take a few seconds...' -ForegroundColor Green
+        Write-Host 'Please, be patient...' -ForegroundColor Green
+    }
+    # Get informations
+    `$stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+    `$blockHeight = cmd /C "`$env:raptoreumcli getblockcount" | ConvertFrom-Json
+    if (`$first) {Write-Host "Retrieved blockHeight............."  -NoNewline -ForegroundColor cyan; Write-Host "✅" -ForegroundColor Green}
+    `$mempoolInfo = cmd /C "`$env:raptoreumcli getmempoolinfo" | ConvertFrom-Json
+    if (`$first) {Write-Host "Retrieved getmempoolinfo.........." -NoNewline -ForegroundColor cyan; Write-Host "✅" -ForegroundColor Green}
+    `$getnettotals = cmd /C "`$env:raptoreumcli getnettotals" | ConvertFrom-Json
+    if (`$first) {Write-Host "Retrieved getnettotals............" -NoNewline -ForegroundColor cyan; Write-Host "✅" -ForegroundColor Green}
+    `$connectionCount = cmd /C "`$env:raptoreumcli getconnectioncount" | ConvertFrom-Json
+    if (`$first) {Write-Host "Retrieved getconnectioncount......" -NoNewline -ForegroundColor cyan; Write-Host "✅" -ForegroundColor Green}
+    `$smartnodeTotal = cmd /C "`$env:raptoreumcli smartnodelist status"
+    if (`$first) {Write-Host "Retrieved smartnodelist status...." -NoNewline -ForegroundColor cyan; Write-Host "✅" -ForegroundColor Green}
+    `$smartnodeList = `$smartnodeTotal | Where-Object { `$_ -like "*ENABLED*" }
+    if (`$first) {Write-Host "Retrieved enabled smartnodes......" -NoNewline -ForegroundColor cyan; Write-Host "✅" -ForegroundColor Green}
+    `$smartnodeStatus = cmd /C "`$env:raptoreumcli smartnode status" | ConvertFrom-Json
+    if (`$first) {Write-Host "Retrieved smartnode status........" -NoNewline -ForegroundColor cyan; Write-Host "✅" -ForegroundColor Green}
+    `$networkHeight = (Invoke-WebRequest -Uri "https://explorer.raptoreum.com/api/getblockcount" -UseBasicParsing).Content
+    if (`$first) {Write-Host "Retrieved getblockcount..........." -NoNewline -ForegroundColor cyan; Write-Host "✅" -ForegroundColor Green}
+    `$smartnodeVersion = Get-Item "`$env:ProgramFiles (x86)\RaptoreumCore\raptoreumd.exe" -ErrorAction SilentlyContinue| Get-ItemProperty | Select-Object -ExpandProperty VersionInfo
+    if (`$first) {Write-Host "Retrieved smartnode version......." -NoNewline -ForegroundColor cyan; Write-Host "✅" -ForegroundColor Green}
+    `$folderSize = Get-ChildItem "`$env:APPDATA\RaptoreumSmartnode" -Recurse -Exclude nodetest | Measure-Object -Property Length -Sum
+    if (`$first) {Write-Host "Retrieved smartnode folder size..." -NoNewline -ForegroundColor cyan; Write-Host "✅" -ForegroundColor Green}
+    `$systemStabilityIndex = Get-WmiObject -Class Win32_ReliabilityStabilityMetrics | Select-Object -ExpandProperty SystemStabilityIndex -First 1
+    if (`$first) {Write-Host "Retrieved system stability index.." -NoNewline -ForegroundColor cyan; Write-Host "✅" -ForegroundColor Green}
+    `$os = Get-CimInstance -ClassName Win32_OperatingSystem
+    `$cpuUsage = (Get-CimInstance -ClassName Win32_PerfFormattedData_PerfOS_Processor | Where-Object { `$_.Name -eq "_Total" }).PercentProcessorTime
+    `$drive = Get-Volume -DriveLetter (Split-Path -Qualifier `$env:APPDATA\RaptoreumSmartnode)[0]
+    `$ostime = Get-WmiObject -Class Win32_OperatingSystem
+    `$uptime = (Get-Date) - `$ostime.ConvertToDateTime(`$ostime.LastBootUpTime)
+    if (`$first) {Write-Host "Retrieved computer infos.........." -NoNewline -ForegroundColor cyan; Write-Host "✅" -ForegroundColor Green}
+    `$lastPaidBlockHash = cmd /C "`$env:raptoreumcli getblockhash `$(`$smartnodeStatus.dmnState.lastPaidHeight)"
+    if (`$first) {Write-Host "Retrieved last paid block hash...." -NoNewline -ForegroundColor cyan; Write-Host "✅" -ForegroundColor Green}
+    `$lastPaidBlock = cmd /C "`$env:raptoreumcli getblock `$lastPaidBlockHash" | ConvertFrom-Json
+    if (`$first) {Write-Host "Retrieved last paid block........." -NoNewline -ForegroundColor cyan; Write-Host "✅" -ForegroundColor Green}
+    `$smartnodeRewardTx = cmd /C "`$env:raptoreumcli getrawtransaction `$(`$lastPaidBlock.tx[0]) 1" | ConvertFrom-Json
+    if (`$first) {Write-Host "Retrieved smartnode reward........" -NoNewline -ForegroundColor cyan; Write-Host "✅" -ForegroundColor Green}
+    `$latest = Invoke-RestMethod -Uri "https://api.github.com/repos/Raptor3um/raptoreum/releases/latest"
+    if (`$first) {Write-Host "Retrieved latest version.........." -NoNewline -ForegroundColor cyan; Write-Host "✅" -ForegroundColor Green}
+    `$first = `$false
+    `$stopwatch.Stop()
+    pause
+
+    # Display informations
+    Clear-Host
     Write-Host "----------------------------------" -ForegroundColor Cyan
     Write-Host "Raptoreum Dashboard Pro 9000 Plus" -ForegroundColor Yellow
     Write-Host "----------------------------------" -ForegroundColor Cyan
-    Write-Host ""
-    Write-Host "Gathering informations... " -ForegroundColor Green
-    Write-Host "Be patient..."
-}
-# Get informations
-`$blockHeight = cmd /C "`$env:raptoreumcli getblockcount" | ConvertFrom-Json
-`$mempoolInfo = cmd /C "`$env:raptoreumcli getmempoolinfo" | ConvertFrom-Json
-`$getnettotals = cmd /C "`$env:raptoreumcli getnettotals" | ConvertFrom-Json
-`$connectionCount = cmd /C "`$env:raptoreumcli getconnectioncount" | ConvertFrom-Json
-`$smartnodeTotal = cmd /C "`$env:raptoreumcli smartnodelist status"
-`$smartnodeList = `$smartnodeTotal | Where-Object { `$_ -like "*ENABLED*" }
-`$smartnodeStatus = cmd /C "`$env:raptoreumcli smartnode status" | ConvertFrom-Json
-`$networkHeight = (Invoke-WebRequest -Uri "https://explorer.raptoreum.com/api/getblockcount" -UseBasicParsing).Content
-`$smartnodeVersion = Get-Item "`$env:ProgramFiles (x86)\RaptoreumCore\raptoreumd.exe" -ErrorAction SilentlyContinue| Get-ItemProperty | Select-Object -ExpandProperty VersionInfo
-`$folderSize = Get-ChildItem "`$env:APPDATA\RaptoreumSmartnode" -Recurse -Exclude nodetest | Measure-Object -Property Length -Sum
-`$bls = (Get-Content "`$env:APPDATA\RaptoreumSmartnode\raptoreum.conf" | Where-Object { `$_ -like "smartnodeblsprivkey=*" }) -replace "smartnodeblsprivkey=", ""
-`$proTX = (Get-Content "`$env:USERPROFILE\check.ps1" | Where-Object { `$_ -like "*NODE_PROTX =*" }) -replace ".*NODE_PROTX\s*=\s*", "" -replace '^"|"`$', ''
-`$systemStabilityIndex = Get-WmiObject -Class Win32_ReliabilityStabilityMetrics | Select-Object -ExpandProperty SystemStabilityIndex -First 1
-`$os = Get-CimInstance -ClassName Win32_OperatingSystem
-`$cpuUsage = (Get-CimInstance -ClassName Win32_PerfFormattedData_PerfOS_Processor | Where-Object { `$_.Name -eq "_Total" }).PercentProcessorTime
-`$drive = Get-Volume -DriveLetter (Split-Path -Qualifier `$env:APPDATA\RaptoreumSmartnode)[0]
-`$ostime = Get-WmiObject -Class Win32_OperatingSystem
-`$uptime = (Get-Date) - `$ostime.ConvertToDateTime(`$ostime.LastBootUpTime)
-`$lastPaidBlockHash = cmd /C "`$env:raptoreumcli getblockhash `$(`$smartnodeStatus.dmnState.lastPaidHeight)" #| ConvertFrom-Json
-`$lastPaidBlock = cmd /C "`$env:raptoreumcli getblock `$lastPaidBlockHash" | ConvertFrom-Json
-`$smartnodeRewardTx = cmd /C "`$env:raptoreumcli getrawtransaction `$(`$lastPaidBlock.tx[0]) 1" | ConvertFrom-Json
-`$latest = Invoke-RestMethod -Uri "https://api.github.com/repos/Raptor3um/raptoreum/releases/latest"
+    Display-Information 'Local/Network block height...' "`$blockHeight/`$networkHeight" -Color `$(Get-DataColor ([Math]::Abs(`$blockHeight - `$networkHeight) -lt 3))
+    Display-Information 'Active/Total Smartnodes......' "`$(`$smartnodeList.count)/`$(`$smartnodeTotal.count) (`$(((`$smartnodeList.count / `$smartnodeTotal.count) * 100).ToString("F1"))%)"
+    Display-Information 'Mempool (tx/size)............' "`$(`$mempoolInfo.size) tx / `$([math]::Round(`$mempoolInfo.bytes / 1MB, 3)) Mb"
+    Display-Information 'Local/Available version......' "`$(`$smartnodeVersion.ProductVersion) / `$(`$latest.tag_name)" -Color `$(Get-DataColor (`$smartnodeVersion.ProductVersion -eq `$latest.tag_name))
+    Write-Host "----------------------------------" -ForegroundColor Cyan
+    Display-Information 'Smartnode status.............' "`$(`$smartnodeStatus.status)" -Color `$(Get-DataColor (`$smartnodeStatus.status -match 'Ready'))
+    Display-Information 'Smartnode connections........' "`$(`$connectionCount)" -Color `$(Get-DataColor (`$connectionCount -gt 8))
+    Display-Information 'Smartnode folder size .......' "`$([math]::Round(`$folderSize.sum / 1GB, 2)) Gb"
+    Display-Information 'Estimated reward per day.....' "`$([Math]::Round((720 / `$smartnodeList.count) * 1000, 2)) rtm + fees"
+    if (`$lastPaidBlock -ne `$null) {
+        `$lastPaidTime = [DateTimeOffset]::FromUnixTimeSeconds(`$lastPaidBlock.time).ToLocalTime().DateTime
+        `$timeElapsedDisplay = "{0}d {1}h {2}m" -f `$((Get-Date) - `$lastPaidTime).Days, `$((Get-Date) - `$lastPaidTime).Hours, `$((Get-Date) - `$lastPaidTime).Minutes
+        Display-Information "Since last payment - Value....: `$timeElapsedDisplay - `$(`$smartnodeRewardTx.vout[1].value) RTM"} else {Display-Information 'Since last payment - Value....: N/A'
+    }
+    Display-Information 'IP address and port..........' `$(`$smartnodeStatus.service)
+    Display-Information 'Smartnode ProTX..............' ((Get-Content "`$env:USERPROFILE\check.ps1" | Where-Object { `$_ -like "*NODE_PROTX =*" }) -replace ".*NODE_PROTX\s*=\s*", "" -replace '^"|"`$', '')
+    Display-Information 'Smartnode BLS Key............' ((Get-Content "`$env:APPDATA\RaptoreumSmartnode\raptoreum.conf" | Where-Object { `$_ -like "smartnodeblsprivkey=*" }) -replace "smartnodeblsprivkey=", "")
+    Display-Information 'Payout address...............' `$(`$smartnodeStatus.dmnState.payoutAddress)
+    Display-Information 'Registered height............' `$(`$smartnodeStatus.dmnState.registeredHeight)
+    Display-Information 'PoSe score (Time to 0).......' "`$(`$smartnodeStatus.dmnState.PoSePenalty) (`$([math]::Floor((`$smartnodeStatus.dmnState.PoSePenalty) * 4 / 60))h `$(`$smartnodeStatus.dmnState.PoSePenalty * 4 % 60)min)" -Color `$(Get-DataColor (`$smartnodeStatus.dmnState.PoSePenalty -eq 0))
+    Display-Information 'PoSe ban/revived height......' "`$(`$smartnodeStatus.dmnState.PoSeBanHeight) / `$(`$smartnodeStatus.dmnState.PoSeRevivedHeight)"
+    Write-Host "----------------------------------" -ForegroundColor Cyan
+    Display-Information 'System stability index.......' "`$([Math]::Round(`$systemStabilityIndex,1))/10" -Color `$(Get-DataColor (`$systemStabilityIndex -eq 10))
+    Display-Information 'System uptime................' `$("{0}d {1}h {2}m" -f `$uptime.Days, `$uptime.Hours, `$uptime.Minutes)
+    Display-Information 'CPU usage....................' "`$cpuUsage %" -Color `$(Get-DataColor (`$cpuUsage -lt 90))
+    Display-Information 'RAM usage....................' "`$([math]::Round((`$os.TotalVisibleMemorySize - `$os.FreePhysicalMemory) / 1024 / 1024, 2))/`$([math]::Round(`$os.TotalVisibleMemorySize / 1024 / 1024, 2))GB (`$([math]::Round(((`$os.TotalVisibleMemorySize - `$os.FreePhysicalMemory) / `$os.TotalVisibleMemorySize * 100), 0))% used)" -Color `$(Get-DataColor (((`$os.TotalVisibleMemorySize - `$os.FreePhysicalMemory) / `$os.TotalVisibleMemorySize * 100) -lt 90))
+    Display-Information 'Disk usage (Free/Total)......' "`$([math]::Round((`$drive.SizeRemaining / 1GB), 2))/`$([math]::Round((`$drive.Size / 1GB), 2)) GB (`$([math]::Round((1 - (`$drive.SizeRemaining / `$drive.Size)) * 100, 0))% used)" -Color `$(Get-DataColor ((1 - (`$drive.SizeRemaining / `$drive.Size)) * 100 -lt 90))
+    Display-Information 'Total received...............' "`$([math]::Round(`$getnettotals.totalbytesrecv / 1MB)) Mb"
+    Display-Information 'Total sent...................' "`$([math]::Round(`$getnettotals.totalbytessent / 1MB, 0)) Mb"
+    Write-Host "Loaded in `$(`$stopwatch.Elapsed.Seconds) sec"
 
-Clear-Host
-# Display informations
-Write-Host "----------------------------------" -ForegroundColor Cyan
-Write-Host "Raptoreum Dashboard Pro 9000 Plus" -ForegroundColor Yellow
-Write-Host "----------------------------------" -ForegroundColor Cyan
-Write-Host "Local/Network block height...: `$blockHeight/`$networkHeight" -ForegroundColor Green
-Write-Host "Active/Total Smartnodes......: `$(`$smartnodeList.count)/`$(`$smartnodeTotal.count) (`$(((`$smartnodeList.count / `$smartnodeTotal.count) * 100).ToString("F1"))%)" -ForegroundColor Green
-Write-Host "Mempool (tx/size)............: `$(`$mempoolInfo.size) tx / `$([math]::Round(`$mempoolInfo.bytes / 1MB, 3)) Mb" -ForegroundColor Green
-Write-Host "Local/Available version......: `$(`$smartnodeVersion.ProductVersion) / `$(`$latest.tag_name)" -ForegroundColor `$(if (`$smartnodeVersion.ProductVersion -ne `$latest.tag_name) {'Yellow'} else {'Green'})
-Write-Host "----------------------------------" -ForegroundColor Cyan
-Write-Host "Smartnode status.............: `$(`$smartnodeStatus.status)" -ForegroundColor `$(if (`$smartnodeStatus.status -notmatch 'Ready') {'Yellow'} else {'Green'})
-Write-Host "Smartnode connections........: `$(`$connectionCount)" -ForegroundColor Green
-Write-Host "Smartnode folder size .......: `$([math]::Round(`$folderSize.sum / 1GB, 2)) Gb" -ForegroundColor Green
-Write-Host "Estimated reward per day.....: `$([Math]::Round((720 / `$smartnodeList.count) * 1000, 2)) rtm + fees" -ForegroundColor Green
-if (`$lastPaidBlock -ne `$null) {
-    `$lastPaidTime = [DateTimeOffset]::FromUnixTimeSeconds(`$lastPaidBlock.time).ToLocalTime().DateTime
-    `$timeElapsedDisplay = "{0}d {1}h {2}m" -f `$((Get-Date) - `$lastPaidTime).Days, `$((Get-Date) - `$lastPaidTime).Hours, `$((Get-Date) - `$lastPaidTime).Minutes
-    Write-Host "Since last payment - Value...: `$timeElapsedDisplay - `$(`$smartnodeRewardTx.vout[0].value) RTM" -ForegroundColor Green} else {Write-Host "Since last payment - Value...: N/A" -ForegroundColor Green
-}
-Write-Host "IP address and port..........: `$(`$smartnodeStatus.service)" -ForegroundColor Green
-Write-Host "Smartnode ProTX..............: `$proTX" -ForegroundColor Green
-Write-Host "Smartnode BLS Key............: `$bls" -ForegroundColor Green
-Write-Host "Payout address...............: `$(`$smartnodeStatus.dmnState.payoutAddress)" -ForegroundColor Green
-Write-Host "Registered height............: `$(`$smartnodeStatus.dmnState.registeredHeight)" -ForegroundColor Green
-Write-Host "PoSe score (Time to 0).......: `$(`$smartnodeStatus.dmnState.PoSePenalty) (`$([math]::Floor(((`$smartnodeStatus.dmnState.PoSePenalty) * 4) / 60))h `$((`$smartnodeStatus.dmnState.PoSePenalty) * 4 % 60)min)" -ForegroundColor Green
-Write-Host "PoSe ban/revived height......: `$(`$smartnodeStatus.dmnState.PoSeBanHeight) / `$(`$smartnodeStatus.dmnState.PoSeRevivedHeight)" -ForegroundColor Green
-Write-Host "----------------------------------" -ForegroundColor Cyan
-Write-Host "System stability index.......: `$([Math]::Round(`$systemStabilityIndex,1))/10" -ForegroundColor `$(if (`$systemStabilityIndex -ne 10) { 'Yellow' } else { 'Green' })
-Write-Host "System uptime................: `$("{0}d {1}h {2}m" -f `$uptime.Days, `$uptime.Hours, `$uptime.Minutes)" -ForegroundColor Green
-Write-Host "CPU usage....................: `$cpuUsage %" -ForegroundColor Green
-Write-Host "RAM usage....................: `$([math]::Round((`$os.TotalVisibleMemorySize - `$os.FreePhysicalMemory) / 1024 / 1024, 2))/`$([math]::Round(`$os.TotalVisibleMemorySize / 1024 / 1024, 2))GB (`$([math]::Round(((`$os.TotalVisibleMemorySize - `$os.FreePhysicalMemory) / `$os.TotalVisibleMemorySize * 100), 0))% used)" -ForegroundColor Green
-Write-Host "Disk usage (Free/Total)......: `$([math]::Round((`$drive.SizeRemaining / 1GB), 2))/`$([math]::Round((`$drive.Size / 1GB), 2)) GB (`$([math]::Round((1 - (`$drive.SizeRemaining / `$drive.Size)) * 100, 0))% used)" -ForegroundColor Green
-Write-Host "Total received...............: `$([math]::Round(`$getnettotals.totalbytesrecv / 1MB)) Mb" -ForegroundColor Green
-Write-Host "Total sent...................: `$([math]::Round(`$getnettotals.totalbytessent / 1MB, 0)) Mb" -ForegroundColor Green
-Write-Host ""
-
-# Countdown to refresh
-`$spinner = @('|', '/', '-', '\')
-`$spinnerPos = 0
-`$endTime = (Get-Date).AddSeconds(30)
-while ((Get-Date) -lt `$endTime) {
-    `$remainingSeconds = [math]::Ceiling((`$endTime - (Get-Date)).TotalSeconds)
-    Write-Host -NoNewline "`r`$(`$spinner[`$spinnerPos % 4]) Refresh in `$("{0:00}" -f `$remainingSeconds)" -BackgroundColor White -ForegroundColor Black
-    `$spinnerPos++
-    Start-Sleep -Seconds 1
-} Write-Host -NoNewline "`r * Refreshing..."
+    # Countdown to refresh
+    `$spinner = @('|', '/', '-', '\')
+    `$spinnerPos = 0
+    `$endTime = (Get-Date).AddSeconds(30)
+    while ((Get-Date) -lt `$endTime) {
+        `$remainingSeconds = [math]::Ceiling((`$endTime - (Get-Date)).TotalSeconds)
+        Write-Host -NoNewline "`r`$(`$spinner[`$spinnerPos % 4]) Refresh in `$("{0:00}" -f `$remainingSeconds)" -BackgroundColor White -ForegroundColor Black
+        `$spinnerPos++
+        Start-Sleep -Seconds 1
+    } Write-Host -NoNewline "`r * Refreshing..."
 }
 "@
     $dashboardBatch = @"
 @echo off
 powershell.exe -ExecutionPolicy Bypass -File "%USERPROFILE%\dashboard.ps1"
 "@
-    Set-Content -Path "$env:USERPROFILE\dashboard.ps1" -Value $dashboard -ErrorAction SilentlyContinue -Force
-    Set-Content -Path "$env:USERPROFILE\dashboard.bat" -Value $dashboardBatch -ErrorAction SilentlyContinue -Force
+    Set-Content -Path "$env:USERPROFILE\dashboard.ps1" -Value $dashboard -Encoding UTF8 -ErrorAction SilentlyContinue -Force
+    Set-Content -Path "$env:USERPROFILE\dashboard.bat" -Value $dashboardBatch -Encoding UTF8 -ErrorAction SilentlyContinue -Force
     Write-CurrentTime; Write-Host "  Script created: `%USERPROFILE%\dashboard.ps1..." -ForegroundColor Yellow
     Start-Sleep -Seconds 1
 }
