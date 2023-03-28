@@ -531,41 +531,41 @@ while (`$true) {
     # Get informations
     `$stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
     `$blockHeight = cmd /C "`$env:traptoreumcli getblockcount" | ConvertFrom-Json
-    if (`$first) {Write-Host "Retrieved blockHeight............."  -NoNewline -ForegroundColor cyan; Write-Host "✅" -ForegroundColor Green}
+    if (`$first) {Write-Host "Retrieved blockHeight............."  -NoNewline -ForegroundColor cyan; Write-Host "√" -ForegroundColor Green}
     `$mempoolInfo = cmd /C "`$env:traptoreumcli getmempoolinfo" | ConvertFrom-Json
-    if (`$first) {Write-Host "Retrieved getmempoolinfo.........." -NoNewline -ForegroundColor cyan; Write-Host "✅" -ForegroundColor Green}
+    if (`$first) {Write-Host "Retrieved getmempoolinfo.........." -NoNewline -ForegroundColor cyan; Write-Host "√" -ForegroundColor Green}
     `$getnettotals = cmd /C "`$env:traptoreumcli getnettotals" | ConvertFrom-Json
-    if (`$first) {Write-Host "Retrieved getnettotals............" -NoNewline -ForegroundColor cyan; Write-Host "✅" -ForegroundColor Green}
+    if (`$first) {Write-Host "Retrieved getnettotals............" -NoNewline -ForegroundColor cyan; Write-Host "√" -ForegroundColor Green}
     `$connectionCount = cmd /C "`$env:traptoreumcli getconnectioncount" | ConvertFrom-Json
-    if (`$first) {Write-Host "Retrieved getconnectioncount......" -NoNewline -ForegroundColor cyan; Write-Host "✅" -ForegroundColor Green}
+    if (`$first) {Write-Host "Retrieved getconnectioncount......" -NoNewline -ForegroundColor cyan; Write-Host "√" -ForegroundColor Green}
     `$smartnodeTotal = cmd /C "`$env:traptoreumcli smartnodelist status"
-    if (`$first) {Write-Host "Retrieved smartnodelist status...." -NoNewline -ForegroundColor cyan; Write-Host "✅" -ForegroundColor Green}
+    if (`$first) {Write-Host "Retrieved smartnodelist status...." -NoNewline -ForegroundColor cyan; Write-Host "√" -ForegroundColor Green}
     `$smartnodeList = `$smartnodeTotal | Where-Object { `$_ -like "*ENABLED*" }
-    if (`$first) {Write-Host "Retrieved enabled smartnodes......" -NoNewline -ForegroundColor cyan; Write-Host "✅" -ForegroundColor Green}
+    if (`$first) {Write-Host "Retrieved enabled smartnodes......" -NoNewline -ForegroundColor cyan; Write-Host "√" -ForegroundColor Green}
     `$smartnodeStatus = cmd /C "`$env:traptoreumcli smartnode status" | ConvertFrom-Json
-    if (`$first) {Write-Host "Retrieved smartnode status........" -NoNewline -ForegroundColor cyan; Write-Host "✅" -ForegroundColor Green}
+    if (`$first) {Write-Host "Retrieved smartnode status........" -NoNewline -ForegroundColor cyan; Write-Host "√" -ForegroundColor Green}
     `$networkHeight = (Invoke-WebRequest -Uri "https://testnet.raptoreum.com/api/getblockcount" -UseBasicParsing).Content
-    if (`$first) {Write-Host "Retrieved getblockcount..........." -NoNewline -ForegroundColor cyan; Write-Host "✅" -ForegroundColor Green}
+    if (`$first) {Write-Host "Retrieved getblockcount..........." -NoNewline -ForegroundColor cyan; Write-Host "√" -ForegroundColor Green}
     `$smartnodeVersion = Get-Item "`$env:ProgramFiles (x86)\RaptoreumCore\raptoreumd.exe" -ErrorAction SilentlyContinue| Get-ItemProperty | Select-Object -ExpandProperty VersionInfo
-    if (`$first) {Write-Host "Retrieved smartnode version......." -NoNewline -ForegroundColor cyan; Write-Host "✅" -ForegroundColor Green}
+    if (`$first) {Write-Host "Retrieved smartnode version......." -NoNewline -ForegroundColor cyan; Write-Host "√" -ForegroundColor Green}
     `$folderSize = Get-ChildItem "`$env:APPDATA\RaptoreumSmartnode\nodetest" -Recurse | Measure-Object -Property Length -Sum
-    if (`$first) {Write-Host "Retrieved smartnode folder size..." -NoNewline -ForegroundColor cyan; Write-Host "✅" -ForegroundColor Green}
+    if (`$first) {Write-Host "Retrieved smartnode folder size..." -NoNewline -ForegroundColor cyan; Write-Host "√" -ForegroundColor Green}
     `$systemStabilityIndex = Get-WmiObject -Class Win32_ReliabilityStabilityMetrics | Select-Object -ExpandProperty SystemStabilityIndex -First 1
-    if (`$first) {Write-Host "Retrieved system stability index.." -NoNewline -ForegroundColor cyan; Write-Host "✅" -ForegroundColor Green}
+    if (`$first) {Write-Host "Retrieved system stability index.." -NoNewline -ForegroundColor cyan; Write-Host "√" -ForegroundColor Green}
     `$os = Get-CimInstance -ClassName Win32_OperatingSystem
     `$cpuUsage = (Get-CimInstance -ClassName Win32_PerfFormattedData_PerfOS_Processor | Where-Object { `$_.Name -eq "_Total" }).PercentProcessorTime
     `$drive = Get-Volume -DriveLetter (Split-Path -Qualifier `$env:APPDATA\RaptoreumSmartnode)[0]
     `$ostime = Get-WmiObject -Class Win32_OperatingSystem
     `$uptime = (Get-Date) - `$ostime.ConvertToDateTime(`$ostime.LastBootUpTime)
-    if (`$first) {Write-Host "Retrieved computer infos.........." -NoNewline -ForegroundColor cyan; Write-Host "✅" -ForegroundColor Green}
+    if (`$first) {Write-Host "Retrieved computer infos.........." -NoNewline -ForegroundColor cyan; Write-Host "√" -ForegroundColor Green}
     `$lastPaidBlockHash = cmd /C "`$env:traptoreumcli getblockhash `$(`$smartnodeStatus.dmnState.lastPaidHeight)"
-    if (`$first) {Write-Host "Retrieved last paid block hash...." -NoNewline -ForegroundColor cyan; Write-Host "✅" -ForegroundColor Green}
+    if (`$first) {Write-Host "Retrieved last paid block hash...." -NoNewline -ForegroundColor cyan; Write-Host "√" -ForegroundColor Green}
     `$lastPaidBlock = cmd /C "`$env:traptoreumcli getblock `$lastPaidBlockHash" | ConvertFrom-Json
-    if (`$first) {Write-Host "Retrieved last paid block........." -NoNewline -ForegroundColor cyan; Write-Host "✅" -ForegroundColor Green}
+    if (`$first) {Write-Host "Retrieved last paid block........." -NoNewline -ForegroundColor cyan; Write-Host "√" -ForegroundColor Green}
     `$smartnodeRewardTx = cmd /C "`$env:traptoreumcli getrawtransaction `$(`$lastPaidBlock.tx[0]) 1" | ConvertFrom-Json
-    if (`$first) {Write-Host "Retrieved smartnode reward........" -NoNewline -ForegroundColor cyan; Write-Host "✅" -ForegroundColor Green}
+    if (`$first) {Write-Host "Retrieved smartnode reward........" -NoNewline -ForegroundColor cyan; Write-Host "√" -ForegroundColor Green}
     `$latest = Invoke-RestMethod -Uri "https://api.github.com/repos/Raptor3um/raptoreum/releases/latest"
-    if (`$first) {Write-Host "Retrieved latest version.........." -NoNewline -ForegroundColor cyan; Write-Host "✅" -ForegroundColor Green}
+    if (`$first) {Write-Host "Retrieved latest version.........." -NoNewline -ForegroundColor cyan; Write-Host "√" -ForegroundColor Green}
     `$first = `$false
     `$stopwatch.Stop()
 
