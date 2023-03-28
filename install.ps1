@@ -592,6 +592,9 @@ if (`$first -eq `$Null) {
 `$drive = Get-Volume -DriveLetter (Split-Path -Qualifier `$env:APPDATA\RaptoreumSmartnode)[0]
 `$ostime = Get-WmiObject -Class Win32_OperatingSystem
 `$uptime = (Get-Date) - `$ostime.ConvertToDateTime(`$ostime.LastBootUpTime)
+`$lastPaidBlockHash = cmd /C "`$env:raptoreumcli getblockhash `$(`$smartnodeStatus.dmnState.lastPaidHeight)" #| ConvertFrom-Json
+`$lastPaidBlock = cmd /C "`$env:raptoreumcli getblock `$lastPaidBlockHash" | ConvertFrom-Json
+`$smartnodeRewardTx = cmd /C "`$env:raptoreumcli getrawtransaction `$(`$lastPaidBlock.tx[0]) 1" | ConvertFrom-Json
 
 Clear-Host
 # Display informations
@@ -608,6 +611,11 @@ Write-Host "Smartnode status.............: `$(`$smartnodeStatus.status)" -Foregr
 Write-Host "Smartnode connections........: `$(`$connectionCount)" -ForegroundColor Green
 Write-Host "Smartnode folder size .......: `$([math]::Round(`$folderSize.sum / 1GB, 2)) Gb" -ForegroundColor Green
 Write-Host "Estimated reward per day.....: `$([Math]::Round((720 / `$smartnodeList.count) * 1000, 2)) rtm + fees" -ForegroundColor Green
+if (`$lastPaidBlock -ne `$null) {
+    `$lastPaidTime = [DateTimeOffset]::FromUnixTimeSeconds(`$lastPaidBlock.time).ToLocalTime().DateTime
+    `$timeElapsedDisplay = "{0}d {1}h {2}m" -f `$((Get-Date) - `$lastPaidTime).Days, `$((Get-Date) - `$lastPaidTime).Hours, `$((Get-Date) - `$lastPaidTime).Minutes
+    Write-Host "Since last payment - Value...: `$timeElapsedDisplay - `$(`$smartnodeRewardTx.vout[0].value) RTM" -ForegroundColor Green} else {Write-Host "Since last payment - Value...: N/A" -ForegroundColor Green
+}
 Write-Host "IP address and port..........: `$(`$smartnodeStatus.service)" -ForegroundColor Green
 Write-Host "Smartnode ProTX..............: `$proTX" -ForegroundColor Green
 Write-Host "Smartnode BLS Key............: `$bls" -ForegroundColor Green
