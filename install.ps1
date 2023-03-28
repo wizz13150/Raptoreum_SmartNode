@@ -670,7 +670,7 @@ while (`$true) {
 powershell.exe -ExecutionPolicy Bypass -File "%USERPROFILE%\dashboard.ps1"
 "@
     Set-Content -Path "$env:USERPROFILE\dashboard.ps1" -Value $dashboard -Encoding UTF8 -ErrorAction SilentlyContinue -Force
-    Set-Content -Path "$env:USERPROFILE\dashboard.bat" -Value $dashboardBatch -Encoding UTF8 -ErrorAction SilentlyContinue -Force
+    Set-Content -Path "$env:USERPROFILE\dashboard.bat" -Value $dashboardBatch -ErrorAction SilentlyContinue -Force
     Write-CurrentTime; Write-Host "  Script created: `%USERPROFILE%\dashboard.ps1..." -ForegroundColor Yellow
     Start-Sleep -Seconds 1
 }
