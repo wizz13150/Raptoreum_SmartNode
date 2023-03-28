@@ -44,7 +44,7 @@ Bash :
 
 Dashboard :
 
-![image](https://user-images.githubusercontent.com/22177081/228194702-28d54c9c-2911-4f67-8e33-4b8df02fc4c1.png)
+![image](https://user-images.githubusercontent.com/22177081/228387933-79a46466-f496-47ce-b67e-65c4e05c14a2.png)
 
 Update :
 
