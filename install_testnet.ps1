@@ -568,7 +568,6 @@ while (`$true) {
     if (`$first) {Write-Host "Retrieved latest version.........." -NoNewline -ForegroundColor cyan; Write-Host "✅" -ForegroundColor Green}
     `$first = `$false
     `$stopwatch.Stop()
-    pause
 
     # Display informations
     Clear-Host
