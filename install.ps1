@@ -685,7 +685,7 @@ function Create-Service {
         Write-CurrentTime; Write-Host "  Setting $serviceName to start automatically..." -ForegroundColor Yellow
         & $NSSM_exe set $serviceName Start SERVICE_AUTO_START | Out-Null
         Write-CurrentTime; Write-Host "  $serviceName has been created successfully." -ForegroundColor Yellow
-        $service = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
+        $service = Get-Service -Name $serviceName -ErrorAction SilentlyContinue
         if (-not $Null -eq $service) {
             Write-CurrentTime; Write-Host "  Starting daemon service & syncing chain please be patient this will take few moment (20s)..." -ForegroundColor Cyan
             Start-Service $serviceName -ErrorAction Continue
