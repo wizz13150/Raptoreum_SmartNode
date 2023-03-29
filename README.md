@@ -9,7 +9,7 @@ It will install Raptoreum binaries, 7-Zip, NSSM, LogrotateWin, configure basic f
 
 3 shortcuts will be created on the desktop for a Dashboard, to open a bash with the SmartNode, and to update the Smartnode.
 
-This script use custom paths. You can install and run a standard QT wallet (Not recommended!!), the Smartnode will run in a parallel environment :
+This script use custom paths. You can install and run a standard QT wallet (Not recommended!! But okay if you have encrypted your wallet..), the Smartnode will run in a parallel environment :
 ```
 "C:\Program Files (x86)\RaptoreumCore" instead of "C:\Program Files\RaptoreumCore" for binaries
 ```
