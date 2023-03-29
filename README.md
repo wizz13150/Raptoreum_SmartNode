@@ -5,7 +5,7 @@ Customized transcript of [dk808/Raptoreum_SmartNode](https://github.com/dk808/Ra
 
 Download or Copy "[SmartNode_Install.bat](https://github.com/wizz13150/Raptoreum_SmartNode/blob/main/SmartNode_Install.bat)" and run it.
 
-It will install Raptoreum binaries, 7-Zip, NSSM, LogrotateWin, configure basic firewall settings, create a daemon service (RTMService) to control raptoreumd process, and also create scheduled tasks that will check on daemon and Smartnode's health every 20 minutes and backup the chain every month. It also has a bootstrap option for quick syncing.
+It will install Raptoreum binaries, 7-Zip, NSSM, LogrotateWin, configure basic firewall settings, create a daemon service (RTMService) to control raptoreumd process, and also create scheduled tasks that will check on daemon and Smartnode's health every 20 minutes and backup the chain weekly. It also has a bootstrap option for quick syncing.
 
 3 shortcuts will be created on the desktop for a Dashboard, to open a bash with the SmartNode, and to update the Smartnode.
 
