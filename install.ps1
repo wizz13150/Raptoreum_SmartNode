@@ -633,7 +633,7 @@ while (`$true) {
     if (`$lastPaidBlock -ne `$null) {
         `$lastPaidTime = [DateTimeOffset]::FromUnixTimeSeconds(`$lastPaidBlock.time).ToLocalTime().DateTime
         `$timeElapsedDisplay = "{0}d {1}h {2}m" -f `$((Get-Date) - `$lastPaidTime).Days, `$((Get-Date) - `$lastPaidTime).Hours, `$((Get-Date) - `$lastPaidTime).Minutes
-        Display-Information 'Since last payment - Value...' "`$timeElapsedDisplay - `$(`$smartnodeRewardTx.vout[1].value) RTM"}else{Display-Information 'Since last payment - Value....: N/A'
+        Display-Information 'Since last payment...........' "`$timeElapsedDisplay - `$(`$smartnodeRewardTx.vout[1].value) RTM"}else{Display-Information 'Since last payment............: N/A'
     }
     Display-Information 'IP address and port..........' `$(`$smartnodeStatus.service)
     Display-Information 'Smartnode ProTX..............' ((Get-Content "`$env:USERPROFILE\check.ps1" | Where-Object { `$_ -like "*NODE_PROTX =*" }) -replace ".*NODE_PROTX\s*=\s*", "" -replace '^"|"`$', '')
@@ -647,7 +647,7 @@ while (`$true) {
     Display-Information 'System uptime................' `$("{0}d {1}h {2}m" -f `$uptime.Days, `$uptime.Hours, `$uptime.Minutes)
     Display-Information 'CPU usage....................' "`$cpuUsage %" -Color `$(Get-DataColor (`$cpuUsage -lt 90))
     Display-Information 'RAM usage....................' "`$([math]::Round((`$os.TotalVisibleMemorySize - `$os.FreePhysicalMemory) / 1024 / 1024, 2))/`$([math]::Round(`$os.TotalVisibleMemorySize / 1024 / 1024, 2))GB (`$([math]::Round(((`$os.TotalVisibleMemorySize - `$os.FreePhysicalMemory) / `$os.TotalVisibleMemorySize * 100), 0))% used)" -Color `$(Get-DataColor (((`$os.TotalVisibleMemorySize - `$os.FreePhysicalMemory) / `$os.TotalVisibleMemorySize * 100) -lt 90))
-    Display-Information 'Disk usage (Free/Total)......' "`$([math]::Round((`$drive.SizeRemaining / 1GB), 2))/`$([math]::Round((`$drive.Size / 1GB), 2)) GB (`$([math]::Round((1 - (`$drive.SizeRemaining / `$drive.Size)) * 100, 0))% used)" -Color `$(Get-DataColor ((1 - (`$drive.SizeRemaining / `$drive.Size)) * 100 -lt 90))
+    Display-Information 'Disk usage (Free/Total)......' "`$([math]::Round((`$drive.SizeRemaining / 1GB), 2))/`$([math]::Round((`$drive.Size / 1GB), 2))GB (`$([math]::Round((1 - (`$drive.SizeRemaining / `$drive.Size)) * 100, 0))% used)" -Color `$(Get-DataColor ((1 - (`$drive.SizeRemaining / `$drive.Size)) * 100 -lt 90))
     Display-Information 'Total received...............' "`$([math]::Round(`$getnettotals.totalbytesrecv / 1MB)) Mb"
     Display-Information 'Total sent...................' "`$([math]::Round(`$getnettotals.totalbytessent / 1MB, 0)) Mb"
     Write-Host "Loaded in `$(`$stopwatch.Elapsed.Seconds) sec"
