@@ -633,7 +633,7 @@ while (`$true) {
     if (`$lastPaidBlock -ne `$null) {
         `$lastPaidTime = [DateTimeOffset]::FromUnixTimeSeconds(`$lastPaidBlock.time).ToLocalTime().DateTime
         `$timeElapsedDisplay = "{0}d {1}h {2}m" -f `$((Get-Date) - `$lastPaidTime).Days, `$((Get-Date) - `$lastPaidTime).Hours, `$((Get-Date) - `$lastPaidTime).Minutes
-        Display-Information 'Since last payment...........' "`$timeElapsedDisplay - `$(`$smartnodeRewardTx.vout[1].value) RTM"}else{Display-Information 'Since last payment............: N/A'
+        Display-Information 'Since last payment...........' "`$timeElapsedDisplay"}else{Display-Information 'Since last payment............: N/A'
     }
     Display-Information 'IP address and port..........' `$(`$smartnodeStatus.service)
     Display-Information 'Smartnode ProTX..............' ((Get-Content "`$env:USERPROFILE\check.ps1" | Where-Object { `$_ -like "*NODE_PROTX =*" }) -replace ".*NODE_PROTX\s*=\s*", "" -replace '^"|"`$', '')
