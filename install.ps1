@@ -591,7 +591,7 @@ while (`$true) {
     if (`$first) {Write-Host "Retrieved enabled smartnodes......" -NoNewline -ForegroundColor cyan; Write-Host "√" -ForegroundColor Green}
     `$smartnodeStatus = cmd /C "`$env:raptoreumcli smartnode status" | ConvertFrom-Json
     if (`$first) {Write-Host "Retrieved smartnode status........" -NoNewline -ForegroundColor cyan; Write-Host "√" -ForegroundColor Green}
-    `$networkHeight = (Invoke-WebRequest -Uri "https://explorer.raptoreum.com/api/getblockcount" -UseBasicParsing).Content
+    `$networkHeight = (Invoke-WebRequest -Uri "https://explorer.raptoreum.com/api/getblockcount" -UseBasicParsing -ErrorAction SilentlyContinue).Content
     if (`$first) {Write-Host "Retrieved getblockcount..........." -NoNewline -ForegroundColor cyan; Write-Host "√" -ForegroundColor Green}
     `$smartnodeVersion = Get-Item "`$env:ProgramFiles (x86)\RaptoreumCore\raptoreumd.exe" -ErrorAction SilentlyContinue| Get-ItemProperty | Select-Object -ExpandProperty VersionInfo
     if (`$first) {Write-Host "Retrieved smartnode version......." -NoNewline -ForegroundColor cyan; Write-Host "√" -ForegroundColor Green}
@@ -611,7 +611,7 @@ while (`$true) {
     if (`$first) {Write-Host "Retrieved last paid block........." -NoNewline -ForegroundColor cyan; Write-Host "√" -ForegroundColor Green}
     `$smartnodeRewardTx = cmd /C "`$env:raptoreumcli getrawtransaction `$(`$lastPaidBlock.tx[0]) 1" | ConvertFrom-Json
     if (`$first) {Write-Host "Retrieved smartnode reward........" -NoNewline -ForegroundColor cyan; Write-Host "√" -ForegroundColor Green}
-    `$latest = Invoke-RestMethod -Uri "https://api.github.com/repos/Raptor3um/raptoreum/releases/latest"
+    `$latest = Invoke-RestMethod -Uri "https://api.github.com/repos/Raptor3um/raptoreum/releases/latest" -ErrorAction SilentlyContinue
     if (`$first) {Write-Host "Retrieved latest version.........." -NoNewline -ForegroundColor cyan; Write-Host "√" -ForegroundColor Green}
     `$first = `$false
     `$stopwatch.Stop()
