@@ -62,7 +62,7 @@ function LoadFormData {
         $PoolTextBox.Text = $config.Pool
         $UserTextBox.Text = $config.User
         $PassTextBox.Text = $config.Pass
-        $ThreadsTextBox.Text = $config.threads
+        $ThreadsTextBox.Text = $config.Threads
     } else {
         $PoolTextBox.Text = "stratum+tcp://eu.flockpool.com:4444"
         $UserTextBox.Text = "RMRwCAkSJaWHGPiP1rF5EHuUYDTze2xw6J.wizz"
