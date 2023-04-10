@@ -2,14 +2,14 @@ Add-Type -AssemblyName System.Windows.Forms
 
 # Vars
 $smartnodecli = $env:raptoreumcli
-$raptoreumcli = ""
+$raptoreumcli = "C:\Program Files\RaptoreumCore\daemon\raptoreum-cli.exe"
 $serviceName = "RTMService"
 $executablePath = "C:\Program Files (x86)\RaptoreumCore\raptoreum-qt.exe"
 
 # Functions
 function Execute-Command {
     param($command, $buttonName, $background, $console)
-
+    
     if ($background) {
         Start-Process -FilePath "cmd.exe" -ArgumentList "/c $command" -WindowStyle Normal
         $console.Clear()
@@ -44,6 +44,34 @@ function Execute-SmartnodeCommand {
     $console.AppendText(($output | Out-String))
 }
 
+function SaveFormData {
+    $config = @{
+        Pool     = $PoolTextBox.Text
+        User     = $UserTextBox.Text
+        Pass     = $PassTextBox.Text
+        Threads = $ThreadsTrackBar.Value
+    }
+    $json = ConvertTo-Json $config
+    Set-Content -Path "configminers.json" -Value $json
+}
+
+function LoadFormData {
+    if (Test-Path "configminers.json") {
+        $json = Get-Content -Path "configminers.json" -Raw
+        $config = ConvertFrom-Json $json
+        $PoolTextBox.Text = $config.Pool
+        $UserTextBox.Text = $config.User
+        $PassTextBox.Text = $config.Pass
+        $ThreadsTextBox.Text = $config.Threads
+    } else {
+        $PoolTextBox.Text = "stratum+tcp://eu.flockpool.com:4444"
+        $UserTextBox.Text = "RMRwCAkSJaWHGPiP1rF5EHuUYDTze2xw6J.wizz"
+        $PassTextBox.Text = "tototo"
+        $ThreadsTextBox.Text = "4"
+    }
+}
+
+
 # UI
 $Form = New-Object System.Windows.Forms.Form
 $Form.Text = "Raptoreum Tools"
@@ -69,11 +97,11 @@ $SmartnodeTab.Text = "Smartnode"
 $TabControl.Controls.Add($SmartnodeTab)
 
 $MinerTab = New-Object System.Windows.Forms.TabPage
-$MinerTab.Text = "Miner"
+$MinerTab.Text = "Mining"
 $TabControl.Controls.Add($MinerTab)
 
 $HelpTab = New-Object System.Windows.Forms.TabPage
-$HelpTab.Text = "Help"
+$HelpTab.Text = "Help & Community"
 $TabControl.Controls.Add($HelpTab)
 
 <#
@@ -301,7 +329,7 @@ foreach ($btnText in $buttons) {
 }
 
 # Smartnode tab buttons
-$buttons = @("Install Smartnode","Get blockchain info", "Smartnode status", "Start daemon", "Stop daemon", "Get daemon status", "Open a Bash", "Update Smartnode", "Edit Smartnode Config File")
+$buttons = @("Install Smartnode", "Smartnode Dashboard 9000 Pro Plus", "Get blockchain info", "Smartnode status", "Start daemon", "Stop daemon", "Get daemon status", "Open a Bash", "Update Smartnode", "Edit Smartnode Config File")
 $top = 10
 $left = 10
 $width = 350
@@ -331,7 +359,12 @@ foreach ($btnText in $buttons) {
         
                 Execute-Command -command "cmd /c $installSmartnodePath"  -background $true -console $consoleTextBoxSmartnode
             })
-        }
+        }        
+        'Smartnode Dashboard 9000 Pro Plus' {
+            $Button.Add_Click({
+                Execute-Command -command 'powershell.exe -ExecutionPolicy Bypass -File "%USERPROFILE%\dashboard.ps1"' -buttonName 'Smartnode Dashboard 9000 Pro Plus' -background $true -console $consoleTextBoxSmartnode
+            })
+        }        
         'Get blockchain info' {
             $Button.Add_Click({
                 Execute-WalletCommand -command "getblockchaininfo" -buttonName "Get blockchain info" -console $consoleTextBoxSmartnode
@@ -379,10 +412,10 @@ foreach ($btnText in $buttons) {
 
 
 # Miner tab buttons
-$buttons = @("Download XMRig", "Download CPuminer", "Use XMRig", "Use CPuminer")
+$buttons = @("Download XMRig", "Download CPuminer", "Launch XMRig", "Launch CPuminer")
 $top = 10
 $left = 10
-$width = 120
+$width = 350
 $height = 40
 
 foreach ($btnText in $buttons) {
@@ -402,12 +435,12 @@ foreach ($btnText in $buttons) {
         'Download XMRig' {
             $Button.Add_Click({
                 $tempDir = [System.IO.Path]::GetTempPath()
-                $xmrigZip = "$tempDir\xmrig.zip"
-                $xmrigFolder = "$tempDir\xmrig"
+                $xmrigZip = "$tempDir" + "xmrig.zip"
+                $xmrigFolder = "$tempDir" + "xmrig"
                 $uri = "https://api.github.com/repos/xmrig/xmrig/releases/latest"
                 $response = Invoke-RestMethod -Uri $uri
                 $latestVersion = $response.tag_name
-                $xmrigDownloadUrl = "https://github.com/xmrig/xmrig/releases/tag/$latestVersion"
+                $xmrigDownloadUrl = "https://github.com/xmrig/xmrig/releases/download/$latestVersion/xmrig-$($($response.tag_name).Substring(1))-msvc-win64.zip"
                 if ($xmrigDownloadUrl -eq $null) {
                     [System.Windows.Forms.MessageBox]::Show("An error occurred while retrieving the download link for XMRig.", "XMRig Download", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
                     return
@@ -425,19 +458,36 @@ foreach ($btnText in $buttons) {
         'Download CPuminer' {
             $Button.Add_Click({
                 $tempDir = [System.IO.Path]::GetTempPath()
-                $cpuminerZip = "$tempDir\cpuminer.zip"
-                $cpuminerFolder = "$tempDir\cpuminer"
+                $cpuminerZip = "$tempDir" + "cpuminer.zip"
+                $cpuminerFolder = "$tempDir" + "cpuminer"
                 $uri = "https://api.github.com/repos/WyvernTKC/cpuminer-gr-avx2/releases/latest"
                 $response = Invoke-RestMethod -Uri $uri
                 $latestVersion = $response.tag_name
-                $cpuminerDownloadUrl = "https://github.com/WyvernTKC/cpuminer-gr-avx2/releases/tag/$latestVersion"
+                $cpuminerDownloadUrl = "https://github.com/WyvernTKC/cpuminer-gr-avx2/releases/download/$latestVersion/cpuminer-gr-$latestVersion-x86_64_windows.7z"
                 if ($cpuminerDownloadUrl -eq $null) {
                     [System.Windows.Forms.MessageBox]::Show("An error occurred while retrieving the download link for CPUMiner.", "CPUMiner Download", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
                     return
                 }
                 try {
+                    # Install 7-zip to extract cpuminer
+                    [System.Windows.Forms.MessageBox]::Show("We need to download and install 7-Zip for cpuminer", "7-Zip Download", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
+                    $7zipKey = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\7zFM.exe"
+                    if (!(Test-Path $7zipKey)) {
+                        $7zipInstallerUrl = "https://www.7-zip.org/a/7z1900-x64.msi"
+                        $7zipInstallerPath = "$env:USERPROFILE\7z_installer.msi"
+                        Invoke-WebRequest -Uri $7zipInstallerUrl -OutFile $7zipInstallerPath
+                        $msiArguments = @{
+                            FilePath     = "msiexec.exe"
+                            ArgumentList = "/i `"$7zipInstallerPath`" /qn"
+                            Wait         = $true
+                            Verb         = "RunAs"
+                        }
+                        Start-Process @msiArguments -ErrorAction SilentlyContinue
+                        Remove-Item $7zipInstallerPath -ErrorAction SilentlyContinue -Force
+                    }
+                    # cpuminer
                     Invoke-WebRequest -Uri $cpuminerDownloadUrl -OutFile $cpuminerZip
-                    Expand-Archive -LiteralPath $cpuminerZip -DestinationPath $cpuminerFolder -Force
+                    & "C:\Program Files\7-Zip\7z.exe" x -y "$cpuminerZip" -o"$cpuminerFolder"
                     [System.Windows.Forms.MessageBox]::Show("CPUMiner downloaded and extracted successfully to $cpuminerFolder.", "CPUMiner Download", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
                 }
                 catch {
@@ -445,24 +495,52 @@ foreach ($btnText in $buttons) {
                 }
             })
         }
-        'Use XMRig' {
+        'Launch XMRig' {
             $Button.Add_Click({
-                # Ajoutez ici le code pour utiliser XMRig
+                SaveFormData
+                $tempDir = [System.IO.Path]::GetTempPath()
+                $uri = "https://api.github.com/repos/xmrig/xmrig/releases/latest"
+                $response = Invoke-RestMethod -Uri $uri
+                $latestVersion = $response.tag_name
                 $pool = $PoolTextBox.Text
                 $user = $UserTextBox.Text
                 $pass = $PassTextBox.Text
-                $threads = $ThreadsTextBox.Text
-                Execute-Command -command "$tempDir\xmrig\xmrig.exe -o $pool -u $user -p $pass -t $threads" -buttonName "XMRig Run"
+                $threads = $ThreadsTrackBar.Value
+                $dir = "$tempDir" + "xmrig"
+                $xmrigPath = "$dir\xmrig-$($($response.tag_name).Substring(1))\xmrig.exe"        
+                if (Test-Path $xmrigPath) {
+                    Start-Process -FilePath $xmrigPath -ArgumentList "-a gr -o $pool -u $user -p $pass -t $threads" -WindowStyle Normal
+                } else {
+                    [System.Windows.MessageBox]::Show("XMRig executable not found. Please ensure it is downloaded and placed in the correct directory.", "XMRig not found", [System.Windows.MessageBoxButton]::OK, [System.Windows.MessageBoxImage]::Warning)
+                }
             })
         }
-        'Use CPuminer' {
+        'Launch CPuminer' {
             $Button.Add_Click({
-                # Ajoutez ici le code pour utiliser CPuminer
+                SaveFormData
+                $tempDir = [System.IO.Path]::GetTempPath()
+                $uri = "https://api.github.com/repos/WyvernTKC/cpuminer-gr-avx2/releases/latest"
+                $response = Invoke-RestMethod -Uri $uri
+                $latestVersion = $response.tag_name
                 $pool = $PoolTextBox.Text
                 $user = $UserTextBox.Text
                 $pass = $PassTextBox.Text
-                $threads = $ThreadsTextBox.Text
-                Execute-Command -command "$tempDir\cpuminer\cpuminer.exe -o $pool -u $user -p $pass -t $threads" -buttonName "CPuminer Run"
+                $threads = $ThreadsTrackBar.Value
+                $dir = "$tempDir" + "cpuminer"
+                $cpuminerConfigPath = "$dir\cpuminer-gr-$($response.tag_name)-x86_64_windows\config.json"
+                $cpuminerBatPath = "$dir\cpuminer-gr-$($response.tag_name)-x86_64_windows\cpuminer.bat"
+                if (Test-Path $cpuminerBatPath) {
+                    # Change config.json
+                    $config = Get-Content $cpuminerConfigPath | ConvertFrom-Json
+                    $config.url = $pool
+                    $config.user = $user
+                    $config.pass = $pass
+                    $config.threads = $threads
+                    $config | ConvertTo-Json -Depth 20 | Set-Content $cpuminerConfigPath
+                    Start-Process $cpuminerBatPath
+                } else {
+                    [System.Windows.Forms.MessageBox]::Show("Unable to find cpuminer.bat.Please Download cpuminer first.", "Erreur", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
+                }
             })
         }
     }
@@ -472,67 +550,80 @@ foreach ($btnText in $buttons) {
 
 # Ajoutez les champs de formulaire et le bouton pour lancer le mineur
 $PoolLabel = New-Object System.Windows.Forms.Label
-$PoolLabel.Location = New-Object System.Drawing.Point(200, 10)
+$PoolLabel.Location = New-Object System.Drawing.Point(400, 10)
 $PoolLabel.Size = New-Object System.Drawing.Size(50, 20)
 $PoolLabel.Text = "Pool:"
 $MinerTab.Controls.Add($PoolLabel)
 
 $PoolTextBox = New-Object System.Windows.Forms.TextBox
-$PoolTextBox.Location = New-Object System.Drawing.Point(260, 10)
-$PoolTextBox.Size = New-Object System.Drawing.Size(200, 20)
+$PoolTextBox.Location = New-Object System.Drawing.Point(460, 10)
+$PoolTextBox.Size = New-Object System.Drawing.Size(350, 20)
 $MinerTab.Controls.Add($PoolTextBox)
 
 $UserLabel = New-Object System.Windows.Forms.Label
-$UserLabel.Location = New-Object System.Drawing.Point(200, 40)
+$UserLabel.Location = New-Object System.Drawing.Point(400, 40)
 $UserLabel.Size = New-Object System.Drawing.Size(50, 20)
 $UserLabel.Text = "User:"
 $MinerTab.Controls.Add($UserLabel)
 
 $UserTextBox = New-Object System.Windows.Forms.TextBox
-$UserTextBox.Location = New-Object System.Drawing.Point(260, 40)
-$UserTextBox.Size = New-Object System.Drawing.Size(200, 20)
+$UserTextBox.Location = New-Object System.Drawing.Point(460, 40)
+$UserTextBox.Size = New-Object System.Drawing.Size(350, 20)
 $MinerTab.Controls.Add($UserTextBox)
 
 $PassLabel = New-Object System.Windows.Forms.Label
-$PassLabel.Location = New-Object System.Drawing.Point(200, 70)
+$PassLabel.Location = New-Object System.Drawing.Point(400, 70)
 $PassLabel.Size = New-Object System.Drawing.Size(50, 20)
 $PassLabel.Text = "Pass:"
 $MinerTab.Controls.Add($PassLabel)
 
 $PassTextBox = New-Object System.Windows.Forms.TextBox
-$PassTextBox.Location = New-Object System.Drawing.Point(260, 70)
+$PassTextBox.Location = New-Object System.Drawing.Point(460, 70)
 $PassTextBox.Size = New-Object System.Drawing.Size(200, 20)
 $MinerTab.Controls.Add($PassTextBox)
 
 $ThreadsLabel = New-Object System.Windows.Forms.Label
-$ThreadsLabel.Location = New-Object System.Drawing.Point(200, 100)
+$ThreadsLabel.Location = New-Object System.Drawing.Point(400, 100)
 $ThreadsLabel.Size = New-Object System.Drawing.Size(50, 20)
 $ThreadsLabel.Text = "Threads:"
 $MinerTab.Controls.Add($ThreadsLabel)
 
-$ThreadsTextBox = New-Object System.Windows.Forms.TextBox
-$ThreadsTextBox.Location = New-Object System.Drawing.Point(260, 100)
-$ThreadsTextBox.Size = New-Object System.Drawing.Size(200, 20)
-$MinerTab.Controls.Add($ThreadsTextBox)
+$maxThreads = [System.Environment]::ProcessorCount
+$ThreadsTrackBar = New-Object System.Windows.Forms.TrackBar
+$ThreadsTrackBar.Location = New-Object System.Drawing.Point(460, 100)
+$ThreadsTrackBar.Size = New-Object System.Drawing.Size(200, 45)
+$ThreadsTrackBar.Minimum = 1
+$ThreadsTrackBar.Maximum = $maxThreads
+$ThreadsTrackBar.TickFrequency = 1
+$ThreadsTrackBar.Value = $maxThreads
+$MinerTab.Controls.Add($ThreadsTrackBar)
+$SelectedThreadsLabel = New-Object System.Windows.Forms.Label
+$SelectedThreadsLabel.Location = New-Object System.Drawing.Point(670, 100)
+$SelectedThreadsLabel.Size = New-Object System.Drawing.Size(50, 20)
+$SelectedThreadsLabel.Text = "$($ThreadsTrackBar.Value)"
+$MinerTab.Controls.Add($SelectedThreadsLabel)
+$ThreadsTrackBar.Add_Scroll({
+    $SelectedThreadsLabel.Text = $ThreadsTrackBar.Value.ToString()
+})
+$ThreadsTrackBar.add_ValueChanged({
+    SaveFormData
+})
 
-$ConsoleTextBox = New-Object System.Windows.Forms.TextBox
-$ConsoleTextBox.Location = New-Object System.Drawing.Point(10, 150)
-$ConsoleTextBox.Size = New-Object System.Drawing.Size(650, 300)
-$ConsoleTextBox.Multiline = $true
-$ConsoleTextBox.ReadOnly = $true
-$ConsoleTextBox.BackColor = [System.Drawing.Color]::White
-$ConsoleTextBox.ForeColor = [System.Drawing.Color]::Black
-$ConsoleTextBox.Font = New-Object System.Drawing.Font("Consolas", 10)
-$MinerTab.Controls.Add($ConsoleTextBox)
 
-$LaunchButton = New-Object System.Windows.Forms.Button
-$LaunchButton.Location = New-Object System.Drawing.Point(480, 10)
-$LaunchButton.Size = New-Object System.Drawing.Size(180, 120)
-$LaunchButton.Text = "Launch Miner"
-$LaunchButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Standard
-$LaunchButton.BackColor = [System.Drawing.Color]::LightGray
-$LaunchButton.Font = New-Object System.Drawing.Font("Consolas", 10)
-$MinerTab.Controls.Add($LaunchButton)
+#$ThreadsTextBox = New-Object System.Windows.Forms.TextBox
+#$ThreadsTextBox.Location = New-Object System.Drawing.Point(460, 100)
+#$ThreadsTextBox.Size = New-Object System.Drawing.Size(100, 20)
+#$MinerTab.Controls.Add($ThreadsTextBox)
+
+$SaveButton = New-Object System.Windows.Forms.Button
+$SaveButton.Location = New-Object System.Drawing.Point(690, 130)
+$SaveButton.Size = New-Object System.Drawing.Size(120, 40)
+$SaveButton.Text = "Save"
+$SaveButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Standard
+$SaveButton.BackColor = [System.Drawing.Color]::LightGray
+$SaveButton.Font = New-Object System.Drawing.Font("Consolas", 10)
+$SaveButton.Add_Click({ SaveFormData })
+$MinerTab.Controls.Add($SaveButton)
 
 
 # Help tab buttons
@@ -585,7 +676,10 @@ foreach ($btnText in $buttons) {
     $HelpTab.Controls.Add($Button)
     $top += 40
 }
+# Load miner settings from config file
+LoadFormData
 
 $Form.Controls.Add($TabControl)
 $Form.Add_Shown({$Form.Activate()})
 [void]$Form.ShowDialog()
+
