@@ -62,12 +62,14 @@ function LoadFormData {
         $PoolTextBox.Text = $config.Pool
         $UserTextBox.Text = $config.User
         $PassTextBox.Text = $config.Pass
-        $ThreadsTextBox.Text = $config.Threads
+        $ThreadsTrackBar.Value = $config.threads
+        $SelectedThreadsLabel.Text = $config.Threads
     } else {
         $PoolTextBox.Text = "stratum+tcp://eu.flockpool.com:4444"
         $UserTextBox.Text = "RMRwCAkSJaWHGPiP1rF5EHuUYDTze2xw6J.wizz"
         $PassTextBox.Text = "tototo"
-        $ThreadsTextBox.Text = "4"
+        $ThreadsTrackBar.Value = "4"
+        $SelectedThreadsLabel.Text = "4"
     }
 }
 
@@ -576,17 +578,7 @@ $MinerTab.Controls.Add($PassLabel)
 $PassTextBox = New-Object System.Windows.Forms.TextBox
 $PassTextBox.Location = New-Object System.Drawing.Point(460, 70)
 $PassTextBox.Size = New-Object System.Drawing.Size(200, 20)
-
-$PassTextBox.Add_TextChanged({
-    if ($PassTextBox.Text.Length -lt 6) {
-        $PassTextBox.ForeColor = [System.Drawing.Color]::Red
-    } else {
-        $PassTextBox.ForeColor = [System.Drawing.Color]::Black
-    }
-})
-
 $MinerTab.Controls.Add($PassTextBox)
-
 
 $ThreadsLabel = New-Object System.Windows.Forms.Label
 $ThreadsLabel.Location = New-Object System.Drawing.Point(400, 100)
