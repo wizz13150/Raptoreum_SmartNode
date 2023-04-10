@@ -163,7 +163,7 @@ foreach ($btnText in $buttons) {
 
 
 # Wallet tab buttons
-$buttons = @("Install Wallet", "Apply a Bootstrap", "Blockchain", "Wallet", "Network", "Mining", "Util", "Evo", "Control", "Rawtransactions", "Zmq")
+$buttons = @("Install Wallet", "Apply a Bootstrap (admin todo)", "Blockchain", "Wallet", "Network", "Mining", "Util", "Evo", "Control", "Rawtransactions", "Zmq")
 $top = 10
 $left = 10
 $width = 350
@@ -193,11 +193,9 @@ foreach ($btnText in $buttons) {
         'Apply a Bootstrap' {
             $Button.Add_Click({
                 $bootstrapUrl = "https://raw.githubusercontent.com/wizz13150/RaptoreumStuff/main/RTM_Bootstrap.bat"
-                $bootstrapPath = "$env:TEMP\RTM_Bootstrap.bat"
-        
+                $bootstrapPath = "$env:TEMP\RTM_Bootstrap.bat"        
                 $wc = New-Object System.Net.WebClient
-                $wc.DownloadFile($bootstrapUrl, $bootstrapPath)
-        
+                $wc.DownloadFile($bootstrapUrl, $bootstrapPath)        
                 Execute-Command -command "cmd /c $bootstrapPath"  -background $true -console $consoleTextBoxSmartnode
             })
         }
@@ -274,12 +272,10 @@ foreach ($btnText in $buttons) {
                 $cancelButton.Size = New-Object System.Drawing.Size(60, 30)
                 $cancelButton.Text = "Cancel"
                 $cancelButton.DialogResult = [System.Windows.Forms.DialogResult]::Cancel
-                $form.Controls.Add($cancelButton)    
-
+                $form.Controls.Add($cancelButton)
                 $form.AcceptButton = $okButton
                 $form.CancelButton = $cancelButton    
                 $result = $form.ShowDialog()
-    
                 if ($result -eq [System.Windows.Forms.DialogResult]::OK) {
                     $recipient = $recipientTextBox.Text
                     $amount = $amountTextBox.Text
@@ -320,11 +316,9 @@ foreach ($btnText in $buttons) {
         'Install Smartnode' {
             $Button.Add_Click({
                 $installSmartnodeUrl = "https://raw.githubusercontent.com/wizz13150/Raptoreum_Smartnode/main/SmartNode_Install.bat"
-                $installSmartnodePath = "$env:TEMP\rtm_smartnode_installer.bat"
-        
+                $installSmartnodePath = "$env:TEMP\rtm_smartnode_installer.bat"        
                 $wc = New-Object System.Net.WebClient
-                $wc.DownloadFile($installSmartnodeUrl, $installSmartnodePath)
-        
+                $wc.DownloadFile($installSmartnodeUrl, $installSmartnodePath)        
                 Execute-Command -command "cmd /c $installSmartnodePath"  -background $true -console $consoleTextBoxSmartnode
             })
         }        
@@ -397,7 +391,6 @@ foreach ($btnText in $buttons) {
     $Button.FlatAppearance.BorderColor = [System.Drawing.Color]::DarkGray
     $Button.Margin = New-Object System.Windows.Forms.Padding(0, 0, 0, 10)
     $Button.Font = New-Object System.Drawing.Font("Consolas", 10)
-
     switch ($btnText) {
         'Download RaptorWings' {
             $Button.Add_Click({
