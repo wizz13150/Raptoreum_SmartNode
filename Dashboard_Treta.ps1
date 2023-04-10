@@ -71,7 +71,6 @@ function LoadFormData {
     }
 }
 
-
 # UI
 $Form = New-Object System.Windows.Forms.Form
 $Form.Text = "Raptoreum Tools"
@@ -104,19 +103,6 @@ $HelpTab = New-Object System.Windows.Forms.TabPage
 $HelpTab.Text = "Help & Community"
 $TabControl.Controls.Add($HelpTab)
 
-<#
-$consoleTextBoxGeneral = New-Object System.Windows.Forms.TextBox
-$consoleTextBoxGeneral.Location = New-Object System.Drawing.Point(400, 10)
-$consoleTextBoxGeneral.Size = New-Object System.Drawing.Size(520, 400)
-$consoleTextBoxGeneral.Multiline = $true
-$consoleTextBoxGeneral.ScrollBars = 'Vertical'
-$consoleTextBoxGeneral.ReadOnly = $true
-$consoleTextBoxGeneral.BackColor = [System.Drawing.Color]::Black
-$consoleTextBoxGeneral.ForeColor = [System.Drawing.Color]::Green
-$consoleTextBoxGeneral.Font = New-Object System.Drawing.Font("Consolas", 9)
-$GeneralTab.Controls.Add($consoleTextBoxGeneral)
-#>
-
 $consoleTextBoxSmartnode = New-Object System.Windows.Forms.TextBox
 $consoleTextBoxSmartnode.Location = New-Object System.Drawing.Point(400, 10)
 $consoleTextBoxSmartnode.Size = New-Object System.Drawing.Size(520, 400)
@@ -139,26 +125,12 @@ $consoleTextBoxWallet.ForeColor = [System.Drawing.Color]::Green
 $consoleTextBoxWallet.Font = New-Object System.Drawing.Font("Consolas", 9)
 $WalletTab.Controls.Add($consoleTextBoxWallet)
 
-<#
-$consoleTextBoxMiner = New-Object System.Windows.Forms.TextBox
-$consoleTextBoxMiner.Location = New-Object System.Drawing.Point(400, 10)
-$consoleTextBoxMiner.Size = New-Object System.Drawing.Size(520, 400)
-$consoleTextBoxMiner.Multiline = $true
-$consoleTextBoxMiner.ScrollBars = 'Vertical'
-$consoleTextBoxMiner.ReadOnly = $true
-$consoleTextBoxMiner.BackColor = [System.Drawing.Color]::Black
-$consoleTextBoxMiner.ForeColor = [System.Drawing.Color]::Green
-$consoleTextBoxMiner.Font = New-Object System.Drawing.Font("Consolas", 9)
-$MinerTab.Controls.Add($consoleTextBoxMiner)
-#>
-
 # General buttons
-$buttons = @("Get blockchain info", "Smartnode status")
+$buttons = @("Button 1", "Button 2")
 $top = 10
 $left = 10
 $width = 350
 $height = 40
-
 foreach ($btnText in $buttons) {
     $Button = New-Object System.Windows.Forms.Button
     $Button.Location = New-Object System.Drawing.Point($left, $top)
@@ -171,7 +143,6 @@ foreach ($btnText in $buttons) {
     $Button.FlatAppearance.BorderColor = [System.Drawing.Color]::DarkGray
     $Button.Margin = New-Object System.Windows.Forms.Padding(0, 0, 0, 10)
     $Button.Font = New-Object System.Drawing.Font("Consolas", 10)
-
     switch ($btnText) {
         'Get blockchain info' {
             $Button.Add_Click({
@@ -188,13 +159,13 @@ foreach ($btnText in $buttons) {
     $top += 40
 }
 
+
 # Wallet tab buttons
 $buttons = @("Install Wallet", "Apply a Bootstrap", "Blockchain", "Wallet", "Network", "Mining", "Util", "Evo", "Control", "Rawtransactions", "Zmq")
 $top = 10
 $left = 10
 $width = 350
 $height = 40
-
 foreach ($btnText in $buttons) {
     $Button = New-Object System.Windows.Forms.Button
     $Button.Location = New-Object System.Drawing.Point($left, $top)
@@ -207,7 +178,6 @@ foreach ($btnText in $buttons) {
     $Button.FlatAppearance.BorderColor = [System.Drawing.Color]::DarkGray
     $Button.Margin = New-Object System.Windows.Forms.Padding(0, 0, 0, 10)
     $Button.Font = New-Object System.Drawing.Font("Consolas", 10)
-
     switch ($btnText) {
         'Install Wallet' {
             $Button.Add_Click({
@@ -250,83 +220,81 @@ foreach ($btnText in $buttons) {
                 $SendCoinsItem = New-Object System.Windows.Forms.ToolStripMenuItem
                 $SendCoinsItem.Text = "Send coins"
                 $SendCoinsItem.Add_Click({
-                    $form = New-Object System.Windows.Forms.Form
-                    $form.Icon = [System.Drawing.Icon]::ExtractAssociatedIcon($executablePath)
-                    $form.Text = "Send coins"
-                    $form.Width = 315
-                    $form.Height = 290
-                    $form.StartPosition = "CenterScreen"
+                $form = New-Object System.Windows.Forms.Form
+                $form.Icon = [System.Drawing.Icon]::ExtractAssociatedIcon($executablePath)
+                $form.Text = "Send coins"
+                $form.Width = 315
+                $form.Height = 290
+                $form.StartPosition = "CenterScreen"
     
-                    $recipientLabel = New-Object System.Windows.Forms.Label
-                    $recipientLabel.Location = New-Object System.Drawing.Point(10, 20)
-                    $recipientLabel.Size = New-Object System.Drawing.Size(280, 20)
-                    $recipientLabel.Text = "Recipient Address:"
-                    $form.Controls.Add($recipientLabel)
+                $recipientLabel = New-Object System.Windows.Forms.Label
+                $recipientLabel.Location = New-Object System.Drawing.Point(10, 20)
+                $recipientLabel.Size = New-Object System.Drawing.Size(280, 20)
+                $recipientLabel.Text = "Recipient Address:"
+                $form.Controls.Add($recipientLabel)
     
-                    $recipientTextBox = New-Object System.Windows.Forms.TextBox
-                    $recipientTextBox.Location = New-Object System.Drawing.Point(10, 50)
-                    $recipientTextBox.Size = New-Object System.Drawing.Size(280, 20)
-                    $form.Controls.Add($recipientTextBox)
+                $recipientTextBox = New-Object System.Windows.Forms.TextBox
+                $recipientTextBox.Location = New-Object System.Drawing.Point(10, 50)
+                $recipientTextBox.Size = New-Object System.Drawing.Size(280, 20)
+                $form.Controls.Add($recipientTextBox)
     
-                    $amountLabel = New-Object System.Windows.Forms.Label
-                    $amountLabel.Location = New-Object System.Drawing.Point(10, 80)
-                    $amountLabel.Size = New-Object System.Drawing.Size(280, 20)
-                    $amountLabel.Text = "Amount:"
-                    $form.Controls.Add($amountLabel)
+                $amountLabel = New-Object System.Windows.Forms.Label
+                $amountLabel.Location = New-Object System.Drawing.Point(10, 80)
+                $amountLabel.Size = New-Object System.Drawing.Size(280, 20)
+                $amountLabel.Text = "Amount:"
+                $form.Controls.Add($amountLabel)
     
-                    $amountTextBox = New-Object System.Windows.Forms.TextBox
-                    $amountTextBox.Location = New-Object System.Drawing.Point(10, 110)
-                    $amountTextBox.Size = New-Object System.Drawing.Size(280, 20)
-                    $form.Controls.Add($amountTextBox)
+                $amountTextBox = New-Object System.Windows.Forms.TextBox
+                $amountTextBox.Location = New-Object System.Drawing.Point(10, 110)
+                $amountTextBox.Size = New-Object System.Drawing.Size(280, 20)
+                $form.Controls.Add($amountTextBox)
     
-                    $commentLabel = New-Object System.Windows.Forms.Label
-                    $commentLabel.Location = New-Object System.Drawing.Point(10, 140)
-                    $commentLabel.Size = New-Object System.Drawing.Size(280, 20)
-                    $commentLabel.Text = "Optional Comment:"
-                    $form.Controls.Add($commentLabel)
+                $commentLabel = New-Object System.Windows.Forms.Label
+                $commentLabel.Location = New-Object System.Drawing.Point(10, 140)
+                $commentLabel.Size = New-Object System.Drawing.Size(280, 20)
+                $commentLabel.Text = "Optional Comment:"
+                $form.Controls.Add($commentLabel)
     
-                    $commentTextBox = New-Object System.Windows.Forms.TextBox
-                    $commentTextBox.Location = New-Object System.Drawing.Point(10, 170)
-                    $commentTextBox.Size = New-Object System.Drawing.Size(280, 20)
-                    $form.Controls.Add($commentTextBox)
+                $commentTextBox = New-Object System.Windows.Forms.TextBox
+                $commentTextBox.Location = New-Object System.Drawing.Point(10, 170)
+                $commentTextBox.Size = New-Object System.Drawing.Size(280, 20)
+                $form.Controls.Add($commentTextBox)
     
-                    $okButton = New-Object System.Windows.Forms.Button
-                    $okButton.Location = New-Object System.Drawing.Point(80, 210)
-                    $okButton.Size = New-Object System.Drawing.Size(60, 30)
-                    $okButton.Text = "OK"
-                    $okButton.DialogResult = [System.Windows.Forms.DialogResult]::OK
-                    $form.Controls.Add($okButton)
+                $okButton = New-Object System.Windows.Forms.Button
+                $okButton.Location = New-Object System.Drawing.Point(80, 210)
+                $okButton.Size = New-Object System.Drawing.Size(60, 30)
+                $okButton.Text = "OK"
+                $okButton.DialogResult = [System.Windows.Forms.DialogResult]::OK
+                $form.Controls.Add($okButton)
     
-                    $cancelButton = New-Object System.Windows.Forms.Button
-                    $cancelButton.Location = New-Object System.Drawing.Point(160, 210)
-                    $cancelButton.Size = New-Object System.Drawing.Size(60, 30)
-                    $cancelButton.Text = "Cancel"
-                    $cancelButton.DialogResult = [System.Windows.Forms.DialogResult]::Cancel
-                    $form.Controls.Add($cancelButton)
-    
-                    $form.AcceptButton = $okButton
-                    $form.CancelButton = $cancelButton
-    
-                    $result = $form.ShowDialog()
-    
-                    if ($result -eq [System.Windows.Forms.DialogResult]::OK) {
-                        $recipient = $recipientTextBox.Text
-                        $amount = $amountTextBox.Text
-                        $comment = $commentTextBox.Text
-                        Execute-WalletCommand -command "sendtoaddress $recipient $amount '$comment'" -buttonName "Send coins" -console $consoleTextBoxWallet
-                    }
-                })
-                $WalletMenu.Items.Add($SendCoinsItem)
+                $cancelButton = New-Object System.Windows.Forms.Button
+                $cancelButton.Location = New-Object System.Drawing.Point(160, 210)
+                $cancelButton.Size = New-Object System.Drawing.Size(60, 30)
+                $cancelButton.Text = "Cancel"
+                $cancelButton.DialogResult = [System.Windows.Forms.DialogResult]::Cancel
+                $form.Controls.Add($cancelButton)    
 
-                $WalletMenu.Show($Button, $Button.PointToClient([System.Windows.Forms.Cursor]::Position))
-                $Button.ContextMenuStrip = $WalletMenu
+                $form.AcceptButton = $okButton
+                $form.CancelButton = $cancelButton    
+                $result = $form.ShowDialog()
+    
+                if ($result -eq [System.Windows.Forms.DialogResult]::OK) {
+                    $recipient = $recipientTextBox.Text
+                    $amount = $amountTextBox.Text
+                    $comment = $commentTextBox.Text
+                    Execute-WalletCommand -command "sendtoaddress $recipient $amount '$comment'" -buttonName "Send coins" -console $consoleTextBoxWallet
+                }
             })
-        }
+            $WalletMenu.Items.Add($SendCoinsItem)
 
-    }
+            $WalletMenu.Show($Button, $Button.PointToClient([System.Windows.Forms.Cursor]::Position))
+            $Button.ContextMenuStrip = $WalletMenu
+        })
+    }}
     $WalletTab.Controls.Add($Button)
     $top += 40
 }
+
 
 # Smartnode tab buttons
 $buttons = @("Install Smartnode", "Smartnode Dashboard 9000 Pro Plus", "Get blockchain info", "Smartnode status", "Start daemon", "Stop daemon", "Get daemon status", "Open a Bash", "Update Smartnode", "Edit Smartnode Config File")
@@ -334,7 +302,6 @@ $top = 10
 $left = 10
 $width = 350
 $height = 40
-
 foreach ($btnText in $buttons) {
     $Button = New-Object System.Windows.Forms.Button
     $Button.Location = New-Object System.Drawing.Point($left, $top)
@@ -347,7 +314,6 @@ foreach ($btnText in $buttons) {
     $Button.FlatAppearance.BorderColor = [System.Drawing.Color]::DarkGray
     $Button.Margin = New-Object System.Windows.Forms.Padding(0, 0, 0, 10)
     $Button.Font = New-Object System.Drawing.Font("Consolas", 10)
-
     switch ($btnText) {
         'Install Smartnode' {
             $Button.Add_Click({
@@ -417,7 +383,6 @@ $top = 10
 $left = 10
 $width = 350
 $height = 40
-
 foreach ($btnText in $buttons) {
     $Button = New-Object System.Windows.Forms.Button
     $Button.Location = New-Object System.Drawing.Point($left, $top)
@@ -548,7 +513,7 @@ foreach ($btnText in $buttons) {
     $top += 40
 }
 
-# Ajoutez les champs de formulaire et le bouton pour lancer le mineur
+# Miner Forms
 $PoolLabel = New-Object System.Windows.Forms.Label
 $PoolLabel.Location = New-Object System.Drawing.Point(400, 10)
 $PoolLabel.Size = New-Object System.Drawing.Size(50, 20)
@@ -608,12 +573,6 @@ $ThreadsTrackBar.Add_Scroll({
 $ThreadsTrackBar.add_ValueChanged({
     SaveFormData
 })
-
-
-#$ThreadsTextBox = New-Object System.Windows.Forms.TextBox
-#$ThreadsTextBox.Location = New-Object System.Drawing.Point(460, 100)
-#$ThreadsTextBox.Size = New-Object System.Drawing.Size(100, 20)
-#$MinerTab.Controls.Add($ThreadsTextBox)
 
 $SaveButton = New-Object System.Windows.Forms.Button
 $SaveButton.Location = New-Object System.Drawing.Point(690, 130)
@@ -682,4 +641,3 @@ LoadFormData
 $Form.Controls.Add($TabControl)
 $Form.Add_Shown({$Form.Activate()})
 [void]$Form.ShowDialog()
-
