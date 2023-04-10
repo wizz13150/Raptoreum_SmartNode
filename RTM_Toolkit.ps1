@@ -578,6 +578,13 @@ $MinerTab.Controls.Add($PassLabel)
 $PassTextBox = New-Object System.Windows.Forms.TextBox
 $PassTextBox.Location = New-Object System.Drawing.Point(460, 70)
 $PassTextBox.Size = New-Object System.Drawing.Size(200, 20)
+$PassTextBox.Add_TextChanged({
+    if ($PassTextBox.Text.Length -lt 6) {
+        $PassTextBox.ForeColor = [System.Drawing.Color]::Red
+    } else {
+        $PassTextBox.ForeColor = [System.Drawing.Color]::Black
+    }
+})
 $MinerTab.Controls.Add($PassTextBox)
 
 $ThreadsLabel = New-Object System.Windows.Forms.Label
