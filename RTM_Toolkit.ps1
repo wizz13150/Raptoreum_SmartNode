@@ -62,7 +62,7 @@ function LoadFormData {
         $PoolTextBox.Text = $config.Pool
         $UserTextBox.Text = $config.User
         $PassTextBox.Text = $config.Pass
-        $ThreadsTextBox.Text = $config.Threads
+        $ThreadsTextBox.Text = $config.threads
     } else {
         $PoolTextBox.Text = "stratum+tcp://eu.flockpool.com:4444"
         $UserTextBox.Text = "RMRwCAkSJaWHGPiP1rF5EHuUYDTze2xw6J.wizz"
@@ -84,11 +84,11 @@ $TabControl.Size = New-Object System.Drawing.Size(935, 440)
 $Form.Controls.Add($TabControl)
 
 $GeneralTab = New-Object System.Windows.Forms.TabPage
-$GeneralTab.Text = "General"
+$GeneralTab.Text = "General (todo)"
 $TabControl.Controls.Add($GeneralTab)
 
 $WalletTab = New-Object System.Windows.Forms.TabPage
-$WalletTab.Text = "Wallet"
+$WalletTab.Text = "Wallet (todo)"
 $TabControl.Controls.Add($WalletTab)
 
 $SmartnodeTab = New-Object System.Windows.Forms.TabPage
@@ -378,7 +378,7 @@ foreach ($btnText in $buttons) {
 
 
 # Miner tab buttons
-$buttons = @("Download XMRig", "Download CPuminer", "Launch XMRig", "Launch CPuminer")
+$buttons = @("Download RaptorWings", "Download XMRig", "Download CPuminer", "Launch RaptorWings", "Launch XMRig", "Launch CPuminer")
 $top = 10
 $left = 10
 $width = 350
@@ -397,6 +397,30 @@ foreach ($btnText in $buttons) {
     $Button.Font = New-Object System.Drawing.Font("Consolas", 10)
 
     switch ($btnText) {
+        'Download RaptorWings' {
+            $Button.Add_Click({
+                $tempDir = [System.IO.Path]::GetTempPath()
+                $raptorwingsZip = "$tempDir" + "raptorwings.zip"
+                $raptorwingsFolder = "$tempDir" + "raptorwings"
+                $uri = "https://api.github.com/repos/Raptor3um/RaptorWings/releases/latest"
+                $response = Invoke-RestMethod -Uri $uri
+                $latestVersion = $response.tag_name
+                $fileVersion = $response.tag_name -replace '\.', '-'
+                $raptorwingsDownloadUrl = "https://github.com/Raptor3um/RaptorWings/releases/download/$latestVersion/Raptorwings_$fileVersion.zip"
+                if ($raptorwingsDownloadUrl -eq $null) {
+                    [System.Windows.Forms.MessageBox]::Show("An error occurred while retrieving the download link for RaptorWings.", "Download RaptorWings", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
+                    return
+                }
+                try {
+                    Invoke-WebRequest -Uri $raptorwingsDownloadUrl -OutFile $raptorwingsZip
+                    Expand-Archive -LiteralPath $raptorwingsZip -DestinationPath $raptorwingsFolder -Force
+                    [System.Windows.Forms.MessageBox]::Show("RaptorWings downloaded and extracted successfully to $raptorwingsFolder.", "Download RaptorWings", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
+                }
+                catch {
+                    [System.Windows.Forms.MessageBox]::Show("An error occurred while downloading or extracting RaptorWings.`r`nError message: $($Error[0].Exception.Message)", "Download RaptorWings", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
+                }
+            })
+        }
         'Download XMRig' {
             $Button.Add_Click({
                 $tempDir = [System.IO.Path]::GetTempPath()
@@ -407,16 +431,16 @@ foreach ($btnText in $buttons) {
                 $latestVersion = $response.tag_name
                 $xmrigDownloadUrl = "https://github.com/xmrig/xmrig/releases/download/$latestVersion/xmrig-$($($response.tag_name).Substring(1))-msvc-win64.zip"
                 if ($xmrigDownloadUrl -eq $null) {
-                    [System.Windows.Forms.MessageBox]::Show("An error occurred while retrieving the download link for XMRig.", "XMRig Download", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
+                    [System.Windows.Forms.MessageBox]::Show("An error occurred while retrieving the download link for XMRig.", "Download XMRig", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
                     return
                 }
                 try {
                     Invoke-WebRequest -Uri $xmrigDownloadUrl -OutFile $xmrigZip
                     Expand-Archive -LiteralPath $xmrigZip -DestinationPath $xmrigFolder -Force
-                    [System.Windows.Forms.MessageBox]::Show("XMRig downloaded and extracted successfully to $xmrigFolder.", "XMRig Download", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
+                    [System.Windows.Forms.MessageBox]::Show("XMRig downloaded and extracted successfully to $xmrigFolder.", "Download XMRig", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
                 }
                 catch {
-                    [System.Windows.Forms.MessageBox]::Show("An error occurred while downloading or extracting XMRig.`r`nError message: $($Error[0].Exception.Message)", "XMRig Download", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
+                    [System.Windows.Forms.MessageBox]::Show("An error occurred while downloading or extracting XMRig.`r`nError message: $($Error[0].Exception.Message)", "Download XMRig", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
                 }
             })
         }
@@ -458,6 +482,13 @@ foreach ($btnText in $buttons) {
                 catch {
                     [System.Windows.Forms.MessageBox]::Show("An error occurred while downloading or extracting CPUMiner.`r`nError message: $($Error[0].Exception.Message)", "CPUMiner Download", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
                 }
+            })
+        }
+        'Launch RaptorWings' {
+            $Button.Add_Click({
+                $tempDir = [System.IO.Path]::GetTempPath()
+                $raptorwingsExePath = "$tempDir" + "raptorwings\RaptorWings.exe"
+                Start-Process $raptorwingsExePath -WindowStyle Normal
             })
         }
         'Launch XMRig' {
@@ -545,7 +576,17 @@ $MinerTab.Controls.Add($PassLabel)
 $PassTextBox = New-Object System.Windows.Forms.TextBox
 $PassTextBox.Location = New-Object System.Drawing.Point(460, 70)
 $PassTextBox.Size = New-Object System.Drawing.Size(200, 20)
+
+$PassTextBox.Add_TextChanged({
+    if ($PassTextBox.Text.Length -lt 6) {
+        $PassTextBox.ForeColor = [System.Drawing.Color]::Red
+    } else {
+        $PassTextBox.ForeColor = [System.Drawing.Color]::Black
+    }
+})
+
 $MinerTab.Controls.Add($PassTextBox)
+
 
 $ThreadsLabel = New-Object System.Windows.Forms.Label
 $ThreadsLabel.Location = New-Object System.Drawing.Point(400, 100)
