@@ -84,6 +84,7 @@ function Show-CommandParametersForm {
         $parameters = $commandParameters[$command]
         $requiredParameters = $parameters['required']
         $optionalParameters = $parameters['optional']
+        $types = $parameters['types']
 
         $totalParameters = $requiredParameters.Count + $optionalParameters.Count
 
@@ -94,37 +95,68 @@ function Show-CommandParametersForm {
         $form.StartPosition = "CenterScreen"
 
         $y = 20
-        $requiredParameters.ForEach({
+        for ($i = 0; $i -lt $requiredParameters.Count; $i++) {
+            $paramName = $requiredParameters[$i]
             $label = New-Object System.Windows.Forms.Label
             $label.Location = New-Object System.Drawing.Point(10, $y)
             $label.Size = New-Object System.Drawing.Size(280, 20)
-            $label.Text = $_ + '(Required):'
+            $label.Text = $paramName + '(Required):'
             $form.Controls.Add($label)
 
             $y += 20
-            $textBox = New-Object System.Windows.Forms.TextBox
-            $textBox.Location = New-Object System.Drawing.Point(10, $y)
-            $textBox.Size = New-Object System.Drawing.Size(280, 20)
-            $form.Controls.Add($textBox)
-            $y += 30
-        })
 
-        $optionalParameters.ForEach({
+            $currentType = $types[$paramName]
+            if ($currentType -is [hashtable] -and $currentType.type.ToLower() -eq 'boolean') {
+                $comboBox = New-Object System.Windows.Forms.ComboBox
+                $comboBox.Location = New-Object System.Drawing.Point(10, $y)
+                $comboBox.Size = New-Object System.Drawing.Size(280, 20)
+                $comboBox.DropDownStyle = [System.Windows.Forms.ComboBoxStyle]::DropDownList
+                $comboBox.Items.AddRange(@('true', 'false'))
+                $comboBox.SelectedItem = $currentType.defaultValue
+                $form.Controls.Add($comboBox)
+            } else {
+                $textBox = New-Object System.Windows.Forms.TextBox
+                $textBox.Location = New-Object System.Drawing.Point(10, $y)
+                $textBox.Size = New-Object System.Drawing.Size(280, 20)
+                $form.Controls.Add($textBox)
+            }
+
+            $y += 30
+        }
+
+        for ($i = 0; $i -lt $optionalParameters.Count; $i++) {
+            $paramName = $optionalParameters[$i]
             $label = New-Object System.Windows.Forms.Label
             $label.Location = New-Object System.Drawing.Point(10, $y)
             $label.Size = New-Object System.Drawing.Size(280, 20)
-            $label.Text = $_ + ' (Optional):'
+            $label.Text = $paramName + ' (Optional):'
             $form.Controls.Add($label)
 
             $y += 20
-            $textBox = New-Object System.Windows.Forms.TextBox
-            $textBox.Location = New-Object System.Drawing.Point(10, $y)
-            $textBox.Size = New-Object System.Drawing.Size(280, 20)
-            $form.Controls.Add($textBox)
+
+            $currentType = $types[$paramName]
+            if ($currentType -is [hashtable] -and $currentType.type.ToLower() -eq 'boolean') {
+                $comboBox = New-Object System.Windows.Forms.ComboBox
+                $comboBox.Location = New-Object System.Drawing.Point(10, $y)
+                $comboBox.Size = New-Object System.Drawing.Size(280, 20)
+                $comboBox.DropDownStyle = [System.Windows.Forms.ComboBoxStyle]::DropDownList
+                $comboBox.Items.AddRange(@('true', 'false'))
+                $comboBox.SelectedItem = $currentType.defaultValue
+                $form.Controls.Add($comboBox)
+            } else {
+                $textBox = New-Object System.Windows.Forms.TextBox
+                $textBox.Location = New-Object System.Drawing.Point(10, $y)
+                $textBox.Size = New-Object System.Drawing.Size(280, 20)
+                $form.Controls.Add($textBox)
+            }
+
             $y += 30
-        })
+        }
+
+
+
+
         
-        Write-Host "$totalParameters"
         $baseHeight = 150
         $heightAdjustment = 50 * ($totalParameters - 1)
         $form.Height = $baseHeight + $heightAdjustment
@@ -132,44 +164,57 @@ function Show-CommandParametersForm {
         $form.CancelButton = $cancelButton
 
         $okButton = New-Object System.Windows.Forms.Button
-        $okButton.Location = New-Object System.Drawing.Point(80, ($form.Height - 80))
-        $okButton.Size = New-Object System.Drawing.Size(60, 30)
-        $okButton.Text = "OK"
-        $okButton.DialogResult = [System.Windows.Forms.DialogResult]::OK
+        $okButton.Text = 'OK'
+        $okButton.Location = New-Object System.Drawing.Point(10, $y)
+        $okButton.Size = New-Object System.Drawing.Size(75, 25)
+        $okButton.Add_Click({
+            $form.DialogResult = [System.Windows.Forms.DialogResult]::OK
+            $form.Close()
+        })
         $form.Controls.Add($okButton)
 
         $cancelButton = New-Object System.Windows.Forms.Button
-        $cancelButton.Location = New-Object System.Drawing.Point(160, ($form.Height - 80))
-        $cancelButton.Size = New-Object System.Drawing.Size(60, 30)
-        $cancelButton.Text = "Cancel"
-        $cancelButton.DialogResult = [System.Windows.Forms.DialogResult]::Cancel
+        $cancelButton.Text = 'Cancel'
+        $cancelButton.Location = New-Object System.Drawing.Point(95, $y)
+        $cancelButton.Size = New-Object System.Drawing.Size(75, 25)
+        $cancelButton.Add_Click({
+            $form.DialogResult = [System.Windows.Forms.DialogResult]::Cancel
+            $form.Close()
+        })
         $form.Controls.Add($cancelButton)
-                
-        $types = $commandParameters[$command]['types']
-        $result = $form.ShowDialog()
+
+        $form.AcceptButton = $okButton
+        $form.CancelButton = $cancelButton
+
+        $formResult = $form.ShowDialog()
+
         if ($result -eq [System.Windows.Forms.DialogResult]::OK) {
             $requiredValues = @()
-            $optionalValues = @()
-        
+            $optionalValues = @()        
             for ($i = 0; $i -lt $requiredParameters.Count; $i++) {
-                $textBox = $form.Controls | Where-Object { $_.GetType() -eq [System.Windows.Forms.TextBox] -and $_.Location.Y -eq (($_.Location.Y - 20) / 30) * 30 + 20 }
-                $requiredValues += $textBox[$i].Text
+                if ($types[$requiredParameters[$i]].type.ToLower() -eq 'boolean') {
+                    $comboBox = $form.Controls | Where-Object { $_.GetType() -eq [System.Windows.Forms.ComboBox] -and $_.Location.Y -eq (($_.Location.Y - 20) / 30) * 30 + 20 }
+                    $requiredValues += $comboBox[$i].SelectedItem.ToString()
+                } else {
+                    $textBox = $form.Controls | Where-Object { $_.GetType() -eq [System.Windows.Forms.TextBox] -and $_.Location.Y -eq (($_.Location.Y - 20) / 30) * 30 + 20 }
+                    $requiredValues += $textBox[$i].Text
+                }
             }
-        
             for ($i = 0; $i -lt $optionalParameters.Count; $i++) {
-                $textBox = $form.Controls | Where-Object { $_.GetType() -eq [System.Windows.Forms.TextBox] -and $_.Location.Y -eq (($_.Location.Y - 20) / 30) * 30 + 20 }
-                $optionalValues += $textBox[$i + $requiredParameters.Count].Text
+                if ($types[$optionalParameters[$i]].ToLower() -eq 'boolean') {
+                    $comboBox = $form.Controls | Where-Object { $_.GetType() -eq [System.Windows.Forms.ComboBox] -and $_.Location.Y -eq (($_.Location.Y - 20) / 30) * 30 + 20 }
+                    $optionalValues += $comboBox[$i - $requiredParameters.Count].SelectedItem.ToString()
+                } else {
+                    $textBox = $form.Controls | Where-Object { $_.GetType() -eq [System.Windows.Forms.TextBox] -and $_.Location.Y -eq (($_.Location.Y - 20) / 30) * 30 + 20 }
+                    $optionalValues += $textBox[$i + $requiredParameters.Count].Text
+                }
             }
-
             $parameters = $requiredValues + $optionalValues
             $commandString = "$command " + ($parameters -join ' ')
             Execute-WalletCommand -command $commandString -buttonName $command -console $consoleTextBoxWallet
         }
     }
 }
-
-
-
 
 
 # UI
@@ -350,8 +395,14 @@ foreach ($btnText in $buttons) {
                             'types' = @{
                                 'Address' = 'string'
                                 'Label' = 'string'
-                                'Rescan' = 'boolean'
-                                'P2SH' = 'boolean'
+                                'Rescan' = @{
+                                    'type' = 'boolean'
+                                    'defaultValue' = 'true'
+                                }
+                                'P2SH' = @{
+                                    'type' = 'boolean'
+                                    'defaultValue' = 'false'
+                                }
                             }
                         }
                     }
