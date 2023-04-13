@@ -2,9 +2,9 @@ Add-Type -AssemblyName System.Windows.Forms
 
 # Vars
 $smartnodecli = $env:raptoreumcli
-$raptoreumcli = "C:\Program Files\RaptoreumCore\daemon\raptoreum-cli.exe"
+$raptoreumcli = "E:\Raptoreum\Wallet1.3.17.02\raptoreum-cli.exe -conf=E:\Raptoreum\Wallet\raptoreum.conf"
 $serviceName = "RTMService"
-$executablePath = "C:\Program Files (x86)\RaptoreumCore\raptoreum-qt.exe"
+$executablePath = "E:\Raptoreum\Wallet1.3.17.02\raptoreum-qt.exe"
 
 # Functions
 function Execute-Command {
@@ -25,11 +25,11 @@ function Execute-Command {
 }
 
 function Execute-WalletCommand {
-    param($command, $buttonName, $console)
+    param($command, $buttonName, $console, $parameters)
 
-    $output = cmd /C "$smartnodecli $command" 2>&1
+    $output = cmd /C "$raptoreumcli $command $parameters" 2>&1
     $console.Clear()
-    $timestamp = Get-Date -Format "HH:mm:ss"
+    $timestamp = Get-Date -Format "HH:mm:ss param"
     $console.AppendText("[$timestamp] > $buttonName ")
     $console.AppendText(($output | Out-String))
 }
@@ -72,6 +72,105 @@ function LoadFormData {
         $SelectedThreadsLabel.Text = "4"
     }
 }
+
+function Show-CommandParametersForm {
+    param(
+        [string]$command,
+        [hashtable]$commandParameters,
+        [System.Windows.Forms.TextBox]$console
+    )
+
+    if ($commandParameters.ContainsKey($command)) {
+        $parameters = $commandParameters[$command]
+        $requiredParameters = $parameters['required']
+        $optionalParameters = $parameters['optional']
+
+        $totalParameters = $requiredParameters.Count + $optionalParameters.Count
+
+        $form = New-Object System.Windows.Forms.Form
+        $form.Icon = [System.Drawing.Icon]::ExtractAssociatedIcon($executablePath)
+        $form.Text = $command
+        $form.Width = 315
+        $form.StartPosition = "CenterScreen"
+
+        $y = 20
+        $requiredParameters.ForEach({
+            $label = New-Object System.Windows.Forms.Label
+            $label.Location = New-Object System.Drawing.Point(10, $y)
+            $label.Size = New-Object System.Drawing.Size(280, 20)
+            $label.Text = $_ + '(Required):'
+            $form.Controls.Add($label)
+
+            $y += 20
+            $textBox = New-Object System.Windows.Forms.TextBox
+            $textBox.Location = New-Object System.Drawing.Point(10, $y)
+            $textBox.Size = New-Object System.Drawing.Size(280, 20)
+            $form.Controls.Add($textBox)
+            $y += 30
+        })
+
+        $optionalParameters.ForEach({
+            $label = New-Object System.Windows.Forms.Label
+            $label.Location = New-Object System.Drawing.Point(10, $y)
+            $label.Size = New-Object System.Drawing.Size(280, 20)
+            $label.Text = $_ + ' (Optional):'
+            $form.Controls.Add($label)
+
+            $y += 20
+            $textBox = New-Object System.Windows.Forms.TextBox
+            $textBox.Location = New-Object System.Drawing.Point(10, $y)
+            $textBox.Size = New-Object System.Drawing.Size(280, 20)
+            $form.Controls.Add($textBox)
+            $y += 30
+        })
+        
+        Write-Host "$totalParameters"
+        $baseHeight = 150
+        $heightAdjustment = 50 * ($totalParameters - 1)
+        $form.Height = $baseHeight + $heightAdjustment
+        $form.AcceptButton = $okButton
+        $form.CancelButton = $cancelButton
+
+        $okButton = New-Object System.Windows.Forms.Button
+        $okButton.Location = New-Object System.Drawing.Point(80, ($form.Height - 80))
+        $okButton.Size = New-Object System.Drawing.Size(60, 30)
+        $okButton.Text = "OK"
+        $okButton.DialogResult = [System.Windows.Forms.DialogResult]::OK
+        $form.Controls.Add($okButton)
+
+        $cancelButton = New-Object System.Windows.Forms.Button
+        $cancelButton.Location = New-Object System.Drawing.Point(160, ($form.Height - 80))
+        $cancelButton.Size = New-Object System.Drawing.Size(60, 30)
+        $cancelButton.Text = "Cancel"
+        $cancelButton.DialogResult = [System.Windows.Forms.DialogResult]::Cancel
+        $form.Controls.Add($cancelButton)
+                
+        $types = $commandParameters[$command]['types']
+        $result = $form.ShowDialog()
+        if ($result -eq [System.Windows.Forms.DialogResult]::OK) {
+            $requiredValues = @()
+            $optionalValues = @()
+        
+            for ($i = 0; $i -lt $requiredParameters.Count; $i++) {
+                $textBox = $form.Controls | Where-Object { $_.GetType() -eq [System.Windows.Forms.TextBox] -and $_.Location.Y -eq (($_.Location.Y - 20) / 30) * 30 + 20 }
+                $requiredValues += $textBox[$i].Text
+            }
+        
+            for ($i = 0; $i -lt $optionalParameters.Count; $i++) {
+                $textBox = $form.Controls | Where-Object { $_.GetType() -eq [System.Windows.Forms.TextBox] -and $_.Location.Y -eq (($_.Location.Y - 20) / 30) * 30 + 20 }
+                $optionalValues += $textBox[$i + $requiredParameters.Count].Text
+            }
+
+            $parameters = $requiredValues + $optionalValues
+            $commandString = "$command " + ($parameters -join ' ')
+            Execute-WalletCommand -command $commandString -buttonName $command -console $consoleTextBoxWallet
+        }
+    }
+}
+
+
+
+
 
 # UI
 $Form = New-Object System.Windows.Forms.Form
@@ -201,94 +300,92 @@ foreach ($btnText in $buttons) {
         }
         'Wallet' {
             $Button.Add_Click({
-                $WalletMenu = New-Object System.Windows.Forms.ContextMenuStrip
+            $WalletMenu = New-Object System.Windows.Forms.ContextMenuStrip
                 
+                # getnewaddress
                 $NewWalletItem = New-Object System.Windows.Forms.ToolStripMenuItem
                 $NewWalletItem.Text = "Generate a new address"
                 $NewWalletItem.Add_Click({
                     Execute-WalletCommand -command "getnewaddress" -buttonName "Generate a new address" -console $consoleTextBoxWallet
                 })
                 $WalletMenu.Items.Add($NewWalletItem)
-                
+
+                # listreceivedbyaddress
                 $ListWalletItem = New-Object System.Windows.Forms.ToolStripMenuItem
                 $ListWalletItem.Text = "List wallets"
                 $ListWalletItem.Add_Click({
                     Execute-WalletCommand -command "listreceivedbyaddress" -buttonName "List wallets" -console $consoleTextBoxWallet
                 })
                 $WalletMenu.Items.Add($ListWalletItem)
-                
+
+                # sendtoaddress
                 $SendCoinsItem = New-Object System.Windows.Forms.ToolStripMenuItem
                 $SendCoinsItem.Text = "Send coins"
                 $SendCoinsItem.Add_Click({
-                $form = New-Object System.Windows.Forms.Form
-                $form.Icon = [System.Drawing.Icon]::ExtractAssociatedIcon($executablePath)
-                $form.Text = "Send coins"
-                $form.Width = 315
-                $form.Height = 290
-                $form.StartPosition = "CenterScreen"
-    
-                $recipientLabel = New-Object System.Windows.Forms.Label
-                $recipientLabel.Location = New-Object System.Drawing.Point(10, 20)
-                $recipientLabel.Size = New-Object System.Drawing.Size(280, 20)
-                $recipientLabel.Text = "Recipient Address:"
-                $form.Controls.Add($recipientLabel)
-    
-                $recipientTextBox = New-Object System.Windows.Forms.TextBox
-                $recipientTextBox.Location = New-Object System.Drawing.Point(10, 50)
-                $recipientTextBox.Size = New-Object System.Drawing.Size(280, 20)
-                $form.Controls.Add($recipientTextBox)
-    
-                $amountLabel = New-Object System.Windows.Forms.Label
-                $amountLabel.Location = New-Object System.Drawing.Point(10, 80)
-                $amountLabel.Size = New-Object System.Drawing.Size(280, 20)
-                $amountLabel.Text = "Amount:"
-                $form.Controls.Add($amountLabel)
-    
-                $amountTextBox = New-Object System.Windows.Forms.TextBox
-                $amountTextBox.Location = New-Object System.Drawing.Point(10, 110)
-                $amountTextBox.Size = New-Object System.Drawing.Size(280, 20)
-                $form.Controls.Add($amountTextBox)
-    
-                $commentLabel = New-Object System.Windows.Forms.Label
-                $commentLabel.Location = New-Object System.Drawing.Point(10, 140)
-                $commentLabel.Size = New-Object System.Drawing.Size(280, 20)
-                $commentLabel.Text = "Optional Comment:"
-                $form.Controls.Add($commentLabel)
-    
-                $commentTextBox = New-Object System.Windows.Forms.TextBox
-                $commentTextBox.Location = New-Object System.Drawing.Point(10, 170)
-                $commentTextBox.Size = New-Object System.Drawing.Size(280, 20)
-                $form.Controls.Add($commentTextBox)
-    
-                $okButton = New-Object System.Windows.Forms.Button
-                $okButton.Location = New-Object System.Drawing.Point(80, 210)
-                $okButton.Size = New-Object System.Drawing.Size(60, 30)
-                $okButton.Text = "OK"
-                $okButton.DialogResult = [System.Windows.Forms.DialogResult]::OK
-                $form.Controls.Add($okButton)
-    
-                $cancelButton = New-Object System.Windows.Forms.Button
-                $cancelButton.Location = New-Object System.Drawing.Point(160, 210)
-                $cancelButton.Size = New-Object System.Drawing.Size(60, 30)
-                $cancelButton.Text = "Cancel"
-                $cancelButton.DialogResult = [System.Windows.Forms.DialogResult]::Cancel
-                $form.Controls.Add($cancelButton)
-                $form.AcceptButton = $okButton
-                $form.CancelButton = $cancelButton    
-                $result = $form.ShowDialog()
-                if ($result -eq [System.Windows.Forms.DialogResult]::OK) {
-                    $recipient = $recipientTextBox.Text
-                    $amount = $amountTextBox.Text
-                    $comment = $commentTextBox.Text
-                    Execute-WalletCommand -command "sendtoaddress $recipient $amount '$comment'" -buttonName "Send coins" -console $consoleTextBoxWallet
-                }
-            })
-            $WalletMenu.Items.Add($SendCoinsItem)
+                    $commandParameters = @{
+                        'sendtoaddress' = @{
+                            'required' = @('Recipient Address', 'Amount')
+                            'optional' = @('Optional Comment')
+                        }
+                    }
+                    Show-CommandParametersForm -command 'sendtoaddress' -commandParameters $commandParameters -buttonName 'Send coins' -console $consoleTextBoxWallet
+                })
+                $WalletMenu.Items.Add($SendCoinsItem)
 
-            $WalletMenu.Show($Button, $Button.PointToClient([System.Windows.Forms.Cursor]::Position))
-            $Button.ContextMenuStrip = $WalletMenu
-        })
-    }}
+                # importaddress
+                $ImportAddressItem = New-Object System.Windows.Forms.ToolStripMenuItem
+                $ImportAddressItem.Text = "Import address"
+                $ImportAddressItem.Add_Click({
+                    $commandParameters = @{
+                        'importaddress' = @{
+                            'required' = @('Address')
+                            'optional' = @('Label', 'Rescan', 'P2SH')
+                            'types' = @{
+                                'Address' = 'string'
+                                'Label' = 'string'
+                                'Rescan' = 'boolean'
+                                'P2SH' = 'boolean'
+                            }
+                        }
+                    }
+                    Show-CommandParametersForm -command 'importaddress' -commandParameters $commandParameters -buttonName 'Import address' -console $consoleTextBoxWallet
+                })
+                $WalletMenu.Items.Add($ImportAddressItem)
+
+                # importaddress
+                $ImportAddressItem = New-Object System.Windows.Forms.ToolStripMenuItem
+                $ImportAddressItem.Text = "Import address2"
+                $ImportAddressItem.Add_Click({
+                    $commandParameters = @{
+                        'importaddress' = @{
+                            'required' = @('Address')
+                            'optional' = @('Label', 'Rescan', 'P2SH', 'Rescan', 'P2SH', 'Rescan', 'P2SH')
+                        }
+                    }
+                    Show-CommandParametersForm -command 'importaddress' -commandParameters $commandParameters -buttonName 'Import address' -console $consoleTextBoxWallet
+                })
+                $WalletMenu.Items.Add($ImportAddressItem)
+
+                # importaddress
+                $ImportAddressItem = New-Object System.Windows.Forms.ToolStripMenuItem
+                $ImportAddressItem.Text = "Import address2"
+                $ImportAddressItem.Add_Click({
+                    $commandParameters = @{
+                        'importaddress' = @{
+                            'required' = @('Address')
+                            'optional' = @('Label', 'Rescan', 'P2SH', 'Rescan', 'P2SH', 'Rescan', 'P2SH', 'P2SH', 'Rescan', 'P2SH')
+                        }
+                    }
+                    Show-CommandParametersForm -command 'importaddress' -commandParameters $commandParameters -buttonName 'Import address' -console $consoleTextBoxWallet
+                })
+                $WalletMenu.Items.Add($ImportAddressItem)
+
+                $WalletMenu.Show($Button, $Button.PointToClient([System.Windows.Forms.Cursor]::Position))
+                $Button.ContextMenuStrip = $WalletMenu
+            })
+        }
+
+    }
     $WalletTab.Controls.Add($Button)
     $top += 40
 }
