@@ -322,13 +322,19 @@ foreach ($btnText in $buttons) {
                 $SendCoinsItem = New-Object System.Windows.Forms.ToolStripMenuItem
                 $SendCoinsItem.Text = "Send coins"
                 $SendCoinsItem.Add_Click({
+                    $command = 'sendtoaddress'
                     $commandParameters = @{
-                        'sendtoaddress' = @{
+                        $command = @{
                             'required' = @('Recipient Address', 'Amount')
                             'optional' = @('Optional Comment')
+                            'types' = @{
+                                'Recipient Address' = 'string'
+                                'Amount' = 'string'
+                                'Optional Comment' = 'string'
+                            }
                         }
                     }
-                    Show-CommandParametersForm -command 'sendtoaddress' -commandParameters $commandParameters -buttonName 'Send coins' -console $consoleTextBoxWallet
+                    Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'Send coins' -console $consoleTextBoxWallet
                 })
                 $WalletMenu.Items.Add($SendCoinsItem)
 
@@ -336,8 +342,9 @@ foreach ($btnText in $buttons) {
                 $ImportAddressItem = New-Object System.Windows.Forms.ToolStripMenuItem
                 $ImportAddressItem.Text = "Import address"
                 $ImportAddressItem.Add_Click({
+                    $command = 'importaddress'
                     $commandParameters = @{
-                        'importaddress' = @{
+                        $command = @{
                             'required' = @('Address')
                             'optional' = @('Label', 'Rescan', 'P2SH')
                             'types' = @{
@@ -348,38 +355,10 @@ foreach ($btnText in $buttons) {
                             }
                         }
                     }
-                    Show-CommandParametersForm -command 'importaddress' -commandParameters $commandParameters -buttonName 'Import address' -console $consoleTextBoxWallet
+
+                    Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'Import address' -console $consoleTextBoxWallet
                 })
                 $WalletMenu.Items.Add($ImportAddressItem)
-
-                # importaddress
-                $ImportAddressItem = New-Object System.Windows.Forms.ToolStripMenuItem
-                $ImportAddressItem.Text = "Import address2"
-                $ImportAddressItem.Add_Click({
-                    $commandParameters = @{
-                        'importaddress' = @{
-                            'required' = @('Address')
-                            'optional' = @('Label', 'Rescan', 'P2SH', 'Rescan', 'P2SH', 'Rescan', 'P2SH')
-                        }
-                    }
-                    Show-CommandParametersForm -command 'importaddress' -commandParameters $commandParameters -buttonName 'Import address' -console $consoleTextBoxWallet
-                })
-                $WalletMenu.Items.Add($ImportAddressItem)
-
-                # importaddress
-                $ImportAddressItem = New-Object System.Windows.Forms.ToolStripMenuItem
-                $ImportAddressItem.Text = "Import address2"
-                $ImportAddressItem.Add_Click({
-                    $commandParameters = @{
-                        'importaddress' = @{
-                            'required' = @('Address')
-                            'optional' = @('Label', 'Rescan', 'P2SH', 'Rescan', 'P2SH', 'Rescan', 'P2SH', 'P2SH', 'Rescan', 'P2SH')
-                        }
-                    }
-                    Show-CommandParametersForm -command 'importaddress' -commandParameters $commandParameters -buttonName 'Import address' -console $consoleTextBoxWallet
-                })
-                $WalletMenu.Items.Add($ImportAddressItem)
-
                 $WalletMenu.Show($Button, $Button.PointToClient([System.Windows.Forms.Cursor]::Position))
                 $Button.ContextMenuStrip = $WalletMenu
             })
