@@ -34,6 +34,15 @@ function Execute-WalletCommand {
     $console.AppendText(($output | Out-String))
 }
 
+function Print-Command {
+    param($command, $buttonName, $console, $parameters)
+
+    $console.Clear()
+    $timestamp = Get-Date -Format "HH:mm:ss"
+    $console.AppendText("[$timestamp] > $command $parameters `n")
+}
+
+
 function Execute-SmartnodeCommand {
     param($command, $buttonName, $console)
 
@@ -240,14 +249,14 @@ function Show-CommandParametersForm {
             $parameters = $requiredValues + $optionalValues
             if ($requiredValues.Count -eq 0) {
                 if ($printWithoutRunningCheckbox.Checked) {
-                    Print-Command -command $command
+                    Print-Command -command $command -console $consoleTextBoxWallet
                 } else {
                     Execute-WalletCommand -command $command -buttonName $command -console $consoleTextBoxWallet
                 }
             } else {
                 $commandString = "$command " + ($parameters -join ' ')
                 if ($printWithoutRunningCheckbox.Checked) {
-                    Print-Command -command $commandString
+                    Print-Command -command $commandString -console $consoleTextBoxWallet
                 } else {
                     Execute-WalletCommand -command $commandString -buttonName $command -console $consoleTextBoxWallet
                 }
