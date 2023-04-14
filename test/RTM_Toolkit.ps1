@@ -27,8 +27,6 @@ function Execute-Command {
 function Execute-WalletCommand {
     param($command, $buttonName, $console, $parameters)
 
-    write-host "execute"
-
     $output = cmd /C "$raptoreumcli $command $parameters" 2>&1
     $console.Clear()
     $timestamp = Get-Date -Format "HH:mm:ss"
