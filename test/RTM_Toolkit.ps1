@@ -27,9 +27,11 @@ function Execute-Command {
 function Execute-WalletCommand {
     param($command, $buttonName, $console, $parameters)
 
+    write-host "execute"
+
     $output = cmd /C "$raptoreumcli $command $parameters" 2>&1
     $console.Clear()
-    $timestamp = Get-Date -Format "HH:mm:ss param"
+    $timestamp = Get-Date -Format "HH:mm:ss"
     $console.AppendText("[$timestamp] > $buttonName ")
     $console.AppendText(($output | Out-String))
 }
@@ -85,27 +87,26 @@ function Show-CommandParametersForm {
         $requiredParameters = $parameters['required']
         $optionalParameters = $parameters['optional']
         $types = $parameters['types']
-
         $totalParameters = $requiredParameters.Count + $optionalParameters.Count
-
         $form = New-Object System.Windows.Forms.Form
         $form.Icon = [System.Drawing.Icon]::ExtractAssociatedIcon($executablePath)
         $form.Text = $command
         $form.Width = 315
         $form.StartPosition = "CenterScreen"
-
         $y = 20
         for ($i = 0; $i -lt $requiredParameters.Count; $i++) {
             $paramName = $requiredParameters[$i]
+            $currentType = $types[$paramName]
             $label = New-Object System.Windows.Forms.Label
             $label.Location = New-Object System.Drawing.Point(10, $y)
             $label.Size = New-Object System.Drawing.Size(280, 20)
-            $label.Text = $paramName + '(Required):'
+            if ($currentType.type.ToLower() -eq 'boolean') {
+                $label.Text = $paramName + ' (Required, ' + $currentType.type + ', Default:' + $currentType.defaultValue + '):'
+            } else {
+                $label.Text = $paramName + ' (Required, ' + $currentType.type + '):'
+            }
             $form.Controls.Add($label)
-
             $y += 20
-
-            $currentType = $types[$paramName]
             if ($currentType -is [hashtable] -and $currentType.type.ToLower() -eq 'boolean') {
                 $comboBox = New-Object System.Windows.Forms.ComboBox
                 $comboBox.Location = New-Object System.Drawing.Point(10, $y)
@@ -123,18 +124,20 @@ function Show-CommandParametersForm {
 
             $y += 30
         }
-
         for ($i = 0; $i -lt $optionalParameters.Count; $i++) {
             $paramName = $optionalParameters[$i]
+            $currentType = $types[$paramName].type
             $label = New-Object System.Windows.Forms.Label
             $label.Location = New-Object System.Drawing.Point(10, $y)
             $label.Size = New-Object System.Drawing.Size(280, 20)
-            $label.Text = $paramName + ' (Optional):'
+            if ($currentType -eq 'boolean') {
+                $label.Text = $paramName + ' (Optional, ' + $currentType.type + ', Default:' + $currentType.defaultValue + '):'
+            } else {
+                $label.Text = $paramName + ' (Optional, ' + $currentType.type + '):'
+            }
+
             $form.Controls.Add($label)
-
             $y += 20
-
-            $currentType = $types[$paramName]
             if ($currentType -is [hashtable] -and $currentType.type.ToLower() -eq 'boolean') {
                 $comboBox = New-Object System.Windows.Forms.ComboBox
                 $comboBox.Location = New-Object System.Drawing.Point(10, $y)
@@ -149,14 +152,8 @@ function Show-CommandParametersForm {
                 $textBox.Size = New-Object System.Drawing.Size(280, 20)
                 $form.Controls.Add($textBox)
             }
-
             $y += 30
-        }
-
-
-
-
-        
+        }        
         $baseHeight = 150
         $heightAdjustment = 50 * ($totalParameters - 1)
         $form.Height = $baseHeight + $heightAdjustment
@@ -185,33 +182,44 @@ function Show-CommandParametersForm {
 
         $form.AcceptButton = $okButton
         $form.CancelButton = $cancelButton
-
         $formResult = $form.ShowDialog()
 
-        if ($result -eq [System.Windows.Forms.DialogResult]::OK) {
+        if ($result -eq [System.Windows.Forms.DialogResult]::OK -or !$result) {
             $requiredValues = @()
             $optionalValues = @()        
             for ($i = 0; $i -lt $requiredParameters.Count; $i++) {
                 if ($types[$requiredParameters[$i]].type.ToLower() -eq 'boolean') {
                     $comboBox = $form.Controls | Where-Object { $_.GetType() -eq [System.Windows.Forms.ComboBox] -and $_.Location.Y -eq (($_.Location.Y - 20) / 30) * 30 + 20 }
-                    $requiredValues += $comboBox[$i].SelectedItem.ToString()
+                    if ($comboBox) {
+                        $requiredValues += $comboBox[$i].SelectedItem.ToString()
+                    }
                 } else {
                     $textBox = $form.Controls | Where-Object { $_.GetType() -eq [System.Windows.Forms.TextBox] -and $_.Location.Y -eq (($_.Location.Y - 20) / 30) * 30 + 20 }
-                    $requiredValues += $textBox[$i].Text
+                    if ($comboBox) {
+                        $requiredValues += $textBox[$i].Text
+                    }
                 }
             }
             for ($i = 0; $i -lt $optionalParameters.Count; $i++) {
-                if ($types[$optionalParameters[$i]].ToLower() -eq 'boolean') {
+                if ($types[$optionalParameters[$i]].type.ToLower() -eq 'boolean') {
                     $comboBox = $form.Controls | Where-Object { $_.GetType() -eq [System.Windows.Forms.ComboBox] -and $_.Location.Y -eq (($_.Location.Y - 20) / 30) * 30 + 20 }
-                    $optionalValues += $comboBox[$i - $requiredParameters.Count].SelectedItem.ToString()
+                    if ($comboBox) {
+                        $optionalValues += $comboBox[$i - $requiredParameters.Count].SelectedItem.ToString()
+                    }
                 } else {
                     $textBox = $form.Controls | Where-Object { $_.GetType() -eq [System.Windows.Forms.TextBox] -and $_.Location.Y -eq (($_.Location.Y - 20) / 30) * 30 + 20 }
-                    $optionalValues += $textBox[$i + $requiredParameters.Count].Text
+                    if ($comboBox) {
+                        $optionalValues += $textBox[$i + $requiredParameters.Count].Text
+                    }
                 }
             }
             $parameters = $requiredValues + $optionalValues
-            $commandString = "$command " + ($parameters -join ' ')
-            Execute-WalletCommand -command $commandString -buttonName $command -console $consoleTextBoxWallet
+            if ($requiredValues.Count -eq 0) {
+                Execute-WalletCommand -command $command -buttonName $command -console $consoleTextBoxWallet
+            } else {
+                $commandString = "$command " + ($parameters -join ' ')
+                Execute-WalletCommand -command $commandString -buttonName $command -console $consoleTextBoxWallet
+            }
         }
     }
 }
@@ -344,74 +352,219 @@ foreach ($btnText in $buttons) {
             })
         }
         'Wallet' {
-            $Button.Add_Click({
+        $Button.Add_Click({
             $WalletMenu = New-Object System.Windows.Forms.ContextMenuStrip
-                
-                # getnewaddress
-                $NewWalletItem = New-Object System.Windows.Forms.ToolStripMenuItem
-                $NewWalletItem.Text = "Generate a new address"
-                $NewWalletItem.Add_Click({
-                    Execute-WalletCommand -command "getnewaddress" -buttonName "Generate a new address" -console $consoleTextBoxWallet
-                })
-                $WalletMenu.Items.Add($NewWalletItem)
 
-                # listreceivedbyaddress
-                $ListWalletItem = New-Object System.Windows.Forms.ToolStripMenuItem
-                $ListWalletItem.Text = "List wallets"
-                $ListWalletItem.Add_Click({
-                    Execute-WalletCommand -command "listreceivedbyaddress" -buttonName "List wallets" -console $consoleTextBoxWallet
-                })
-                $WalletMenu.Items.Add($ListWalletItem)
+            # getnewaddress
+            $NewWalletItem = New-Object System.Windows.Forms.ToolStripMenuItem
+            $NewWalletItem.Text = "Generate a new address"
+            $NewWalletItem.Add_Click({
+                Execute-WalletCommand -command "getnewaddress" -buttonName "Generate a new address" -console $consoleTextBoxWallet
+            })
+            $WalletMenu.Items.Add($NewWalletItem)
 
-                # sendtoaddress
-                $SendCoinsItem = New-Object System.Windows.Forms.ToolStripMenuItem
-                $SendCoinsItem.Text = "Send coins"
-                $SendCoinsItem.Add_Click({
-                    $command = 'sendtoaddress'
-                    $commandParameters = @{
-                        $command = @{
-                            'required' = @('Recipient Address', 'Amount')
-                            'optional' = @('Optional Comment')
-                            'types' = @{
-                                'Recipient Address' = 'string'
-                                'Amount' = 'string'
-                                'Optional Comment' = 'string'
+            # listreceivedbyaddress
+            $ListWalletItem = New-Object System.Windows.Forms.ToolStripMenuItem
+            $ListWalletItem.Text = "List wallets"
+            $ListWalletItem.Add_Click({
+                Execute-WalletCommand -command "listreceivedbyaddress" -buttonName "List wallets" -console $consoleTextBoxWallet
+            })
+            $WalletMenu.Items.Add($ListWalletItem)
+
+            # sendtoaddress
+            $SendCoinsItem = New-Object System.Windows.Forms.ToolStripMenuItem
+            $SendCoinsItem.Text = "Send coins"
+            $SendCoinsItem.Add_Click({
+                $command = 'sendtoaddress'
+                $commandParameters = @{
+                    $command = @{
+                        'required' = @('Recipient Address', 'Amount')
+                        'optional' = @('Optional Comment')
+                        'types' = @{
+                            'Recipient Address' = @{
+                                'type' = 'string'
+                                }
+                            'Amount' = @{
+                                'type' = 'string'
+                                }
+                            'Optional Comment' = @{
+                                'type' = 'string'
+                                }
+                        }
+                    }
+                }
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'Send coins' -console $consoleTextBoxWallet
+            })
+            $WalletMenu.Items.Add($SendCoinsItem)
+
+            # importaddress
+            $ImportAddressItem = New-Object System.Windows.Forms.ToolStripMenuItem
+            $ImportAddressItem.Text = "Import address"
+            $ImportAddressItem.Add_Click({
+                $command = 'importaddress'
+                $commandParameters = @{
+                    $command = @{
+                        'required' = @('Address')
+                        'optional' = @('Label', 'Rescan', 'P2SH')
+                        'types' = @{
+                            'Address' = @{
+                                'type' = 'string'
+                                }
+                            'Label' = @{
+                                'type' = 'string'
+                                }
+                            'Rescan' = @{
+                                'type' = 'boolean'
+                                'defaultValue' = 'true'
+                            }
+                            'P2SH' = @{
+                                'type' = 'boolean'
+                                'defaultValue' = 'false'
                             }
                         }
                     }
-                    Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'Send coins' -console $consoleTextBoxWallet
-                })
-                $WalletMenu.Items.Add($SendCoinsItem)
+                }
 
-                # importaddress
-                $ImportAddressItem = New-Object System.Windows.Forms.ToolStripMenuItem
-                $ImportAddressItem.Text = "Import address"
-                $ImportAddressItem.Add_Click({
-                    $command = 'importaddress'
-                    $commandParameters = @{
-                        $command = @{
-                            'required' = @('Address')
-                            'optional' = @('Label', 'Rescan', 'P2SH')
-                            'types' = @{
-                                'Address' = 'string'
-                                'Label' = 'string'
-                                'Rescan' = @{
-                                    'type' = 'boolean'
-                                    'defaultValue' = 'true'
-                                }
-                                'P2SH' = @{
-                                    'type' = 'boolean'
-                                    'defaultValue' = 'false'
-                                }
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'Import address' -console $consoleTextBoxWallet
+            })
+            $WalletMenu.Items.Add($ImportAddressItem)
+
+            # getbalance
+            $GetBalanceItem = New-Object System.Windows.Forms.ToolStripMenuItem
+            $GetBalanceItem.Text = "Get balance"
+            $GetBalanceItem.Add_Click({
+                $command = 'getbalance'
+                $commandParameters = @{
+                    $command = @{
+                        'required' = @()
+                        'optional' = @('Min confirmations', 'Add locked', 'Include watch-only')
+                        'types' = @{
+                            'Min confirmations' = @{
+                                'type' = 'int'
+                                'defaultValue' = 1
+                            }
+                            'Add locked' = @{
+                                'type' = 'boolean'
+                                'defaultValue' = 'false'
+                            }
+                            'Include watch-only' = @{
+                                'type' = 'boolean'
+                                'defaultValue' = 'false'
                             }
                         }
                     }
+                }
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'Get balance' -console $consoleTextBoxWallet
+            })
+            $WalletMenu.Items.Add($GetBalanceItem)
 
-                    Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'Import address' -console $consoleTextBoxWallet
-                })
-                $WalletMenu.Items.Add($ImportAddressItem)
-                $WalletMenu.Show($Button, $Button.PointToClient([System.Windows.Forms.Cursor]::Position))
-                $Button.ContextMenuStrip = $WalletMenu
+            # listunspent
+            $ListUnspentItem = New-Object System.Windows.Forms.ToolStripMenuItem
+            $ListUnspentItem.Text = "List unspent"
+            $ListUnspentItem.Add_Click({
+                $command = 'listunspent'
+                $commandParameters = @{
+                    $command = @{
+                        'required' = @()
+                        'optional' = @('Min confirmations', 'Max confirmations', 'Addresses', 'Include unsafe', 'Query options')
+                        'types' = @{
+                            'Min confirmations' = @{
+                                'type' = 'int'
+                                'defaultValue' = 1
+                            }
+                            'Max confirmations' = @{
+                                'type' = 'int'
+                                'defaultValue' = 9999999
+                            }
+                            'Addresses' = @{
+                                'type' = 'string-array'
+                            }
+                            'Include unsafe' = @{
+                                'type' = 'boolean'
+                                'defaultValue' = 'false'
+                            }
+                            'Query options' = @{
+                                'type' = 'string-array'
+                            }
+                        }
+                    }
+                }
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'List unspent' -console $consoleTextBoxWallet
+            })
+            $WalletMenu.Items.Add($ListUnspentItem)
+
+                    # listreceivedbyaddress
+            $ListReceivedItem = New-Object System.Windows.Forms.ToolStripMenuItem
+            $ListReceivedItem.Text = "List received by address"
+            $ListReceivedItem.Add_Click({
+                $command = 'listreceivedbyaddress'
+                $commandParameters = @{
+                    $command = @{
+                        'required' = @()
+                        'optional' = @('Min confirmations', 'Add locked', 'Include empty', 'Include watch-only', 'Address filter')
+                        'types' = @{
+                            'Min confirmations' = @{
+                                'type' = 'int'
+                                'defaultValue' = 1
+                            }
+                            'Add locked' = @{
+                                'type' = 'boolean'
+                                'defaultValue' = 'false'
+                            }
+                            'Include empty' = @{
+                                'type' = 'boolean'
+                                'defaultValue' = 'false'
+                            }
+                            'Include watch-only' = @{
+                                'type' = 'boolean'
+                                'defaultValue' = 'false'
+                            }
+                            'Address filter' = @{
+                                'type' = 'string'
+                            }
+                        }
+                    }
+                }
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'List received by address' -console $consoleTextBoxWallet
+            })
+            $WalletMenu.Items.Add($ListReceivedItem)
+
+            # listsinceblock
+            $ListSinceBlockItem = New-Object System.Windows.Forms.ToolStripMenuItem
+            $ListSinceBlockItem.Text = "List since block"
+            $ListSinceBlockItem.Add_Click({
+                $command = 'listsinceblock'
+                $commandParameters = @{
+                    $command = @{
+                        'required' = @()
+                        'optional' = @('Block hash', 'Target confirmations', 'Include watch-only', 'Include removed')
+                        'types' = @{
+                            'Block hash' = @{
+                                'type' = 'string'
+                            }
+                            'Target confirmations' = @{
+                                'type' = 'int'
+                                'defaultValue' = 1
+                            }
+                            'Include watch-only' = @{
+                                'type' = 'boolean'
+                                'defaultValue' = 'false'
+                            }
+                            'Include removed' = @{
+                                'type' = 'boolean'
+                                'defaultValue' = 'true'
+                            }
+                        }
+                    }
+                }
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'List unspent' -console $consoleTextBoxWallet
+            })
+            $WalletMenu.Items.Add($ListUnspentItem)
+
+
+
+            $WalletMenu.Show($Button, $Button.PointToClient([System.Windows.Forms.Cursor]::Position))
+            $Button.ContextMenuStrip = $WalletMenu
             })
         }
 
