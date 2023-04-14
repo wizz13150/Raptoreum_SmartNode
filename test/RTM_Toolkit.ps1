@@ -124,7 +124,7 @@ function Show-CommandParametersForm {
         }
         for ($i = 0; $i -lt $optionalParameters.Count; $i++) {
             $paramName = $optionalParameters[$i]
-            $currentType = $types[$paramName].type
+            $currentType = $types[$paramName]
             $label = New-Object System.Windows.Forms.Label
             $label.Location = New-Object System.Drawing.Point(10, $y)
             $label.Size = New-Object System.Drawing.Size(280, 20)
@@ -151,7 +151,7 @@ function Show-CommandParametersForm {
                 $form.Controls.Add($textBox)
             }
             $y += 30
-        }        
+        }
         $baseHeight = 150
         $heightAdjustment = 50 * ($totalParameters - 1)
         $form.Height = $baseHeight + $heightAdjustment
@@ -182,9 +182,9 @@ function Show-CommandParametersForm {
         $form.CancelButton = $cancelButton
         $formResult = $form.ShowDialog()
 
-        if ($result -eq [System.Windows.Forms.DialogResult]::OK -or !$result) {
+        if ($formResult  -eq [System.Windows.Forms.DialogResult]::OK -or !$formResult ) {
             $requiredValues = @()
-            $optionalValues = @()        
+            $optionalValues = @()
             for ($i = 0; $i -lt $requiredParameters.Count; $i++) {
                 if ($types[$requiredParameters[$i]].type.ToLower() -eq 'boolean') {
                     $comboBox = $form.Controls | Where-Object { $_.GetType() -eq [System.Windows.Forms.ComboBox] -and $_.Location.Y -eq (($_.Location.Y - 20) / 30) * 30 + 20 }
@@ -422,7 +422,6 @@ foreach ($btnText in $buttons) {
                         }
                     }
                 }
-
                 Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'Import address' -console $consoleTextBoxWallet
             })
             $WalletMenu.Items.Add($ImportAddressItem)
