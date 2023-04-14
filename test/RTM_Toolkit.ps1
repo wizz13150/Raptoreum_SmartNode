@@ -19,7 +19,7 @@ function Execute-Command {
         $output = cmd /C $command 2>&1
         $console.Clear()
         $timestamp = Get-Date -Format "HH:mm:ss"
-        $console.AppendText("[$timestamp] > $buttonName ")
+        $console.AppendText("[$timestamp] > $command  `n")
         $console.AppendText(($output | Out-String))
     }
 }
@@ -30,7 +30,7 @@ function Execute-WalletCommand {
     $output = cmd /C "$raptoreumcli $command $parameters" 2>&1
     $console.Clear()
     $timestamp = Get-Date -Format "HH:mm:ss"
-    $console.AppendText("[$timestamp] > $buttonName ")
+    $console.AppendText("[$timestamp] > $command $parameters `n")
     $console.AppendText(($output | Out-String))
 }
 
@@ -40,7 +40,7 @@ function Execute-SmartnodeCommand {
     $output = cmd /C "$smartnodecli smartnode $command" 2>&1
     $console.Clear()
     $timestamp = Get-Date -Format "HH:mm:ss"
-    $console.AppendText("[$timestamp] > $buttonName ")
+    $console.AppendText("[$timestamp] > smartnode $command  `n")
     $console.AppendText(($output | Out-String))
 }
 
@@ -91,7 +91,15 @@ function Show-CommandParametersForm {
         $form.Text = $command
         $form.Width = 315
         $form.StartPosition = "CenterScreen"
-        $y = 20
+        $y = 10
+        if ($requiredParameters.Count -eq 0) {
+            $messageLabel = New-Object System.Windows.Forms.Label
+            $messageLabel.Location = New-Object System.Drawing.Point(10, $y)
+            $messageLabel.Size = New-Object System.Drawing.Size(280, 20)
+            $messageLabel.Text = "No Required parameter, you can directly click OK"
+            $form.Controls.Add($messageLabel)
+            $y += 30
+        }
         for ($i = 0; $i -lt $requiredParameters.Count; $i++) {
             $paramName = $requiredParameters[$i]
             $currentType = $types[$paramName]
@@ -152,7 +160,12 @@ function Show-CommandParametersForm {
             }
             $y += 30
         }
-        $baseHeight = 150
+        if ($requiredParameters.Count -eq 0) {
+            $baseHeight = 170
+        }
+        else {
+            $baseHeight = 150
+        }
         $heightAdjustment = 50 * ($totalParameters - 1)
         $form.Height = $baseHeight + $heightAdjustment
         $form.AcceptButton = $okButton
@@ -178,6 +191,23 @@ function Show-CommandParametersForm {
         })
         $form.Controls.Add($cancelButton)
 
+        $helpButton = New-Object System.Windows.Forms.Button
+        $helpButton.Text = 'Print Help'
+        $helpButton.Location = New-Object System.Drawing.Point(180, $y)
+        $helpButton.Size = New-Object System.Drawing.Size(75, 25)
+        $helpButton.Add_Click({
+            Execute-WalletCommand -command "help $command" -buttonName $command -console $consoleTextBoxWallet
+            $form.Close()
+        })
+        $form.Controls.Add($helpButton)
+
+        $y += 30
+        $printWithoutRunningCheckbox = New-Object System.Windows.Forms.CheckBox
+        $printWithoutRunningCheckbox.Text = "Print the built command without running it, for Delgon (:"
+        $printWithoutRunningCheckbox.Location = New-Object System.Drawing.Point(10, $y)
+        $printWithoutRunningCheckbox.Size = New-Object System.Drawing.Size(300, 20)
+        $form.Controls.Add($printWithoutRunningCheckbox)
+
         $form.AcceptButton = $okButton
         $form.CancelButton = $cancelButton
         $formResult = $form.ShowDialog()
@@ -188,35 +218,39 @@ function Show-CommandParametersForm {
             for ($i = 0; $i -lt $requiredParameters.Count; $i++) {
                 if ($types[$requiredParameters[$i]].type.ToLower() -eq 'boolean') {
                     $comboBox = $form.Controls | Where-Object { $_.GetType() -eq [System.Windows.Forms.ComboBox] -and $_.Location.Y -eq (($_.Location.Y - 20) / 30) * 30 + 20 }
-                    if ($comboBox) {
+                    if ($comboBox -and $comboBox[$i - $requiredParameters.Count]) {
                         $requiredValues += $comboBox[$i].SelectedItem.ToString()
                     }
                 } else {
                     $textBox = $form.Controls | Where-Object { $_.GetType() -eq [System.Windows.Forms.TextBox] -and $_.Location.Y -eq (($_.Location.Y - 20) / 30) * 30 + 20 }
-                    if ($comboBox) {
-                        $requiredValues += $textBox[$i].Text
-                    }
+                    $requiredValues += $textBox[$i].Text
                 }
             }
             for ($i = 0; $i -lt $optionalParameters.Count; $i++) {
                 if ($types[$optionalParameters[$i]].type.ToLower() -eq 'boolean') {
                     $comboBox = $form.Controls | Where-Object { $_.GetType() -eq [System.Windows.Forms.ComboBox] -and $_.Location.Y -eq (($_.Location.Y - 20) / 30) * 30 + 20 }
-                    if ($comboBox) {
+                    if ($comboBox -and $comboBox[$i - $requiredParameters.Count]) {
                         $optionalValues += $comboBox[$i - $requiredParameters.Count].SelectedItem.ToString()
                     }
                 } else {
                     $textBox = $form.Controls | Where-Object { $_.GetType() -eq [System.Windows.Forms.TextBox] -and $_.Location.Y -eq (($_.Location.Y - 20) / 30) * 30 + 20 }
-                    if ($comboBox) {
-                        $optionalValues += $textBox[$i + $requiredParameters.Count].Text
-                    }
+                    $optionalValues += $textBox[$i + $requiredParameters.Count].Text
                 }
             }
             $parameters = $requiredValues + $optionalValues
             if ($requiredValues.Count -eq 0) {
-                Execute-WalletCommand -command $command -buttonName $command -console $consoleTextBoxWallet
+                if ($printWithoutRunningCheckbox.Checked) {
+                    Print-Command -command $command
+                } else {
+                    Execute-WalletCommand -command $command -buttonName $command -console $consoleTextBoxWallet
+                }
             } else {
                 $commandString = "$command " + ($parameters -join ' ')
-                Execute-WalletCommand -command $commandString -buttonName $command -console $consoleTextBoxWallet
+                if ($printWithoutRunningCheckbox.Checked) {
+                    Print-Command -command $commandString
+                } else {
+                    Execute-WalletCommand -command $commandString -buttonName $command -console $consoleTextBoxWallet
+                }
             }
         }
     }
@@ -352,7 +386,16 @@ foreach ($btnText in $buttons) {
         'Wallet' {
         $Button.Add_Click({
             $WalletMenu = New-Object System.Windows.Forms.ContextMenuStrip
-
+            # Limit menu height
+            $dummyMenuItem = New-Object System.Windows.Forms.ToolStripMenuItem
+            $dummyMenuItem.Text = "Dummy"
+            $walletMenu.Items.Add($dummyMenuItem)
+            $maxVisibleItems = 25
+            $menuItemHeight = $dummyMenuItem.GetPreferredSize([System.Drawing.Size]::Empty).Height
+            $maxHeight = $maxVisibleItems * $menuItemHeight
+            $walletMenu.MaximumSize = New-Object System.Drawing.Size(0, $maxHeight)
+            $walletMenu.Items.Remove($dummyMenuItem)
+            
             # getnewaddress
             $NewWalletItem = New-Object System.Windows.Forms.ToolStripMenuItem
             $NewWalletItem.Text = "Generate a new address"
@@ -554,17 +597,563 @@ foreach ($btnText in $buttons) {
                         }
                     }
                 }
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'List since block' -console $consoleTextBoxWallet
+            })
+            $WalletMenu.Items.Add($ListSinceBlockItem)
+
+            # listtransactions
+            $ListTransactionsItem = New-Object System.Windows.Forms.ToolStripMenuItem
+            $ListTransactionsItem.Text = "List transactions"
+            $ListTransactionsItem.Add_Click({
+                $command = 'listtransactions'
+                $commandParameters = @{
+                    $command = @{
+                        'required' = @()
+                        'optional' = @('Label', 'Count', 'Skip', 'Include watch-only')
+                        'types' = @{
+                            'Label' = @{
+                                'type' = 'string'
+                            }
+                            'Count' = @{
+                                'type' = 'int'
+                                'defaultValue' = 10
+                            }
+                            'Skip' = @{
+                                'type' = 'int'
+                                'defaultValue' = 0
+                            }
+                            'Include watch-only' = @{
+                                'type' = 'boolean'
+                                'defaultValue' = 'false'
+                            }
+                        }
+                    }
+                }
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'List transactions' -console $consoleTextBoxWallet
+            })
+            $WalletMenu.Items.Add($ListTransactionsItem)
+
+            # listunspent
+            $ListUnspentItem = New-Object System.Windows.Forms.ToolStripMenuItem
+            $ListUnspentItem.Text = "List unspent"
+            $ListUnspentItem.Add_Click({
+                $command = 'listunspent'
+                $commandParameters = @{
+                    $command = @{
+                        'required' = @()
+                        'optional' = @('Min confirmations', 'Max confirmations', 'Addresses', 'Include unsafe', 'Query options')
+                        'types' = @{
+                            'Min confirmations' = @{
+                                'type' = 'int'
+                                'defaultValue' = 1
+                            }
+                            'Max confirmations' = @{
+                                'type' = 'int'
+                                'defaultValue' = 9999999
+                            }
+                            'Addresses' = @{
+                                'type' = 'string-array'
+                            }
+                            'Include unsafe' = @{
+                                'type' = 'boolean'
+                                'defaultValue' = 'true'
+                            }
+                            'Query options' = @{
+                                'type' = 'object'
+                            }
+                        }
+                    }
+                }
                 Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'List unspent' -console $consoleTextBoxWallet
             })
             $WalletMenu.Items.Add($ListUnspentItem)
 
+            # listwallets
+            $ListWalletsItem = New-Object System.Windows.Forms.ToolStripMenuItem
+            $ListWalletsItem.Text = "List wallets"
+            $ListWalletsItem.Add_Click({
+                Execute-WalletCommand -command "listwallets" -buttonName "List wallets" -console $consoleTextBoxWallet
+            })
+            $WalletMenu.Items.Add($ListWalletsItem)
 
+            # loadwallet
+            $LoadWalletItem = New-Object System.Windows.Forms.ToolStripMenuItem
+            $LoadWalletItem.Text = "Load wallet"
+            $LoadWalletItem.Add_Click({
+                $command = 'loadwallet'
+                $commandParameters = @{
+                    $command = @{
+                        'required' = @('Filename')
+                        'optional' = @()
+                        'types' = @{
+                            'Filename' = @{
+                                'type' = 'string'
+                            }
+                        }
+                    }
+                }
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'Load wallet' -console $consoleTextBoxWallet
+            })
+            $WalletMenu.Items.Add($LoadWalletItem)
 
+            # lockunspent
+            $LockUnspentItem = New-Object System.Windows.Forms.ToolStripMenuItem
+            $LockUnspentItem.Text = "Lock/unlock unspent"
+            $LockUnspentItem.Add_Click({
+                $command = 'lockunspent'
+                $commandParameters = @{
+                    $command = @{
+                        'required' = @('Unlock')
+                        'optional' = @('Transactions')
+                        'types' = @{
+                            'Unlock' = @{
+                                'type' = 'boolean'
+                            }
+                            'Transactions' = @{
+                                'type' = 'string-array'
+                            }
+                        }
+                    }
+                }
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'Lock/unlock unspent' -console $consoleTextBoxWallet
+            })
+            $WalletMenu.Items.Add($LockUnspentItem)
+
+            # removeaddress
+            $RemoveAddressItem = New-Object System.Windows.Forms.ToolStripMenuItem
+            $RemoveAddressItem.Text = "Remove address"
+            $RemoveAddressItem.Add_Click({
+                $command = 'removeaddress'
+                $commandParameters = @{
+                    $command = @{
+                        'required' = @('Address')
+                        'optional' = @()
+                        'types' = @{
+                            'Address' = @{
+                                'type' = 'string'
+                            }
+                        }
+                    }
+                }
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'Remove address' -console $consoleTextBoxWallet
+            })
+            $WalletMenu.Items.Add($RemoveAddressItem)
+
+            # removeprunedfunds
+            $RemovePrunedFundsItem = New-Object System.Windows.Forms.ToolStripMenuItem
+            $RemovePrunedFundsItem.Text = "Remove pruned funds"
+            $RemovePrunedFundsItem.Add_Click({
+                $command = 'removeprunedfunds'
+                $commandParameters = @{
+                    $command = @{
+                        'required' = @('Transaction ID')
+                        'optional' = @()
+                        'types' = @{
+                            'Transaction ID' = @{
+                                'type' = 'string'
+                            }
+                        }
+                    }
+                }
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'Remove pruned funds' -console $consoleTextBoxWallet
+            })
+            $WalletMenu.Items.Add($RemovePrunedFundsItem)
+
+            # rescanblockchain
+            $RescanBlockchainItem = New-Object System.Windows.Forms.ToolStripMenuItem
+            $RescanBlockchainItem.Text = "Rescan blockchain"
+            $RescanBlockchainItem.Add_Click({
+                $command = 'rescanblockchain'
+                $commandParameters = @{
+                    $command = @{
+                        'required' = @()
+                        'optional' = @('Start height', 'Stop height')
+                        'types' = @{
+                            'Start height' = @{
+                                'type' = 'int'
+                            }
+                            'Stop height' = @{
+                                'type' = 'int'
+                            }
+                        }
+                    }
+                }
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'Rescan blockchain' -console $consoleTextBoxWallet
+            })
+            $WalletMenu.Items.Add($RescanBlockchainItem)
+
+            # sendfrom (Deprecated)
+            $SendFromItem = New-Object System.Windows.Forms.ToolStripMenuItem
+            $SendFromItem.Text = "Send from (Deprecated)"
+            $SendFromItem.Add_Click({
+                $command = 'sendfrom'
+                $commandParameters = @{
+                    $command = @{
+                        'required' = @('From Account', 'To Address', 'Amount')
+                        'optional' = @('Min Confirmations', 'Comment', 'Comment To')
+                        'types' = @{
+                            'From Account' = @{
+                                'type' = 'string'
+                            }
+                            'To Address' = @{
+                                'type' = 'string'
+                            }
+                            'Amount' = @{
+                                'type' = 'string'
+                            }
+                            'Min Confirmations' = @{
+                                'type' = 'int'
+                                'defaultValue' = 1
+                            }
+                            'Comment' = @{
+                                'type' = 'string'
+                            }
+                            'Comment To' = @{
+                                'type' = 'string'
+                            }
+                        }
+                    }
+                }
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'Send from (Deprecated)' -console $consoleTextBoxWallet
+            })
+            $WalletMenu.Items.Add($SendFromItem)
+
+            # sendmany
+            $SendManyItem = New-Object System.Windows.Forms.ToolStripMenuItem
+            $SendManyItem.Text = "Send many"
+            $SendManyItem.Add_Click({
+                $command = 'sendmany'
+                $commandParameters = @{
+                    $command = @{
+                        'required' = @('Recipients')
+                        'optional' = @('Min Confirmations', 'Comment', 'Subtract Fee', 'Use IS', 'Use CJ', 'Conf Target', 'Estimate Mode')
+                        'types' = @{
+                            'Recipients' = @{
+                                'type' = 'string'
+                            }
+                            'Min Confirmations' = @{
+                                'type' = 'int'
+                                'defaultValue' = 1
+                            }
+                            'Comment' = @{
+                                'type' = 'string'
+                            }
+                            'Subtract Fee' = @{
+                                'type' = 'boolean'
+                                'defaultValue' = 'false'
+                            }
+                            'Use IS' = @{
+                                'type' = 'boolean'
+                                'defaultValue' = 'false'
+                            }
+                            'Use CJ' = @{
+                                'type' = 'boolean'
+                                'defaultValue' = 'false'
+                            }
+                            'Conf Target' = @{
+                                'type' = 'int'
+                            }
+                            'Estimate Mode' = @{
+                                'type' = 'string'
+                                'choices' = @('UNSET', 'ECONOMICAL', 'CONSERVATIVE')
+                                'defaultValue' = 'UNSET'
+                            }
+                        }
+                    }
+                }
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'Send many' -console $consoleTextBoxWallet
+            })
+            $WalletMenu.Items.Add($SendManyItem)
+
+            # sendtoaddress
+            $SendToAddressItem = New-Object System.Windows.Forms.ToolStripMenuItem
+            $SendToAddressItem.Text = "Send to address"
+            $SendToAddressItem.Add_Click({
+                $command = 'sendtoaddress'
+                $commandParameters = @{
+                    $command = @{
+                        'required' = @('Address', 'Amount')
+                        'optional' = @('Comment', 'Comment To', 'Subtract Fee', 'Use IS', 'Use CJ', 'Conf Target', 'Estimate Mode')
+                        'types' = @{
+                            'Address' = @{
+                                'type' = 'string'
+                            }
+                            'Amount' = @{
+                                'type' = 'string'
+                            }
+                            'Comment' = @{
+                                'type' = 'string'
+                            }
+                            'Comment To' = @{
+                                'type' = 'string'
+                            }
+                            'Subtract Fee' = @{
+                                'type' = 'boolean'
+                                'defaultValue' = 'false'
+                            }
+                            'Use IS' = @{
+                                'type' = 'boolean'
+                                'defaultValue' = 'false'
+                            }
+                            'Use CJ' = @{
+                                'type' = 'boolean'
+                                'defaultValue' = 'false'
+                            }
+                            'Conf Target' = @{
+                                'type' = 'int'
+                            }
+                            'Estimate Mode' = @{
+                                'type' = 'string'
+                                'choices' = @('UNSET', 'ECONOMICAL', 'CONSERVATIVE')
+                                'defaultValue' = 'UNSET'
+                            }
+                        }
+                    }
+                }
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'Send to address' -console $consoleTextBoxWallet
+            })
+            $WalletMenu.Items.Add($SendToAddressItem)
+
+            # setaccount (Deprecated)
+            $SetAccountItem = New-Object System.Windows.Forms.ToolStripMenuItem
+            $SetAccountItem.Text = "Set account (Deprecated)"
+            $SetAccountItem.Add_Click({
+                $command = 'setaccount'
+                $commandParameters = @{
+                    $command = @{
+                        'required' = @('Address', 'Account')
+                        'optional' = @()
+                        'types' = @{
+                            'Address' = @{
+                                'type' = 'string'
+                            }
+                            'Account' = @{
+                                'type' = 'string'
+                            }
+                        }
+                    }
+                }
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'Set account (Deprecated)' -console $consoleTextBoxWallet
+            })
+            $WalletMenu.Items.Add($SetAccountItem)
+
+            # setcoinjoinamount
+            $SetCoinjoinAmountItem = New-Object System.Windows.Forms.ToolStripMenuItem
+            $SetCoinjoinAmountItem.Text = "Set CoinJoin amount"
+            $SetCoinjoinAmountItem.Add_Click({
+                $command = 'setcoinjoinamount'
+                $commandParameters = @{
+                    $command = @{
+                        'required' = @('Amount')
+                        'optional' = @()
+                        'types' = @{
+                            'Amount' = @{
+                                'type' = 'string'
+                            }
+                        }
+                    }
+                }
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'Set CoinJoin amount' -console $consoleTextBoxWallet
+            })
+            $WalletMenu.Items.Add($SetCoinjoinAmountItem)
+
+            # setcoinjoinrounds
+            $SetCoinjoinRoundsItem = New-Object System.Windows.Forms.ToolStripMenuItem
+            $SetCoinjoinRoundsItem.Text = "Set CoinJoin rounds"
+            $SetCoinjoinRoundsItem.Add_Click({
+                $command = 'setcoinjoinrounds'
+                $commandParameters = @{
+                    $command = @{
+                        'required' = @('Rounds')
+                        'optional' = @()
+                        'types' = @{
+                            'Rounds' = @{
+                                'type' = 'int'
+                            }
+                        }
+                    }
+                }
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'Set CoinJoin rounds' -console $consoleTextBoxWallet
+            })
+            $WalletMenu.Items.Add($SetCoinjoinRoundsItem)
+
+            # settxfee
+            $SetTxFeeItem = New-Object System.Windows.Forms.ToolStripMenuItem
+            $SetTxFeeItem.Text = "Set transaction fee"
+            $SetTxFeeItem.Add_Click({
+                $command = 'settxfee'
+                $commandParameters = @{
+                    $command = @{
+                        'required' = @('Amount')
+                        'optional' = @()
+                        'types' = @{
+                            'Amount' = @{
+                                'type' = 'string'
+                            }
+                        }
+                    }
+                }
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'Set transaction fee' -console $consoleTextBoxWallet
+            })
+            $WalletMenu.Items.Add($SetTxFeeItem)
+
+            # signmessage
+            $SignMessageItem = New-Object System.Windows.Forms.ToolStripMenuItem
+            $SignMessageItem.Text = "Sign message"
+            $SignMessageItem.Add_Click({
+                $command = 'signmessage'
+                $commandParameters = @{
+                    $command = @{
+                        'required' = @('Address', 'Message')
+                        'optional' = @()
+                        'types' = @{
+                            'Address' = @{
+                                'type' = 'string'
+                            }
+                            'Message' = @{
+                                'type' = 'string'
+                            }
+                        }
+                    }
+                }
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'Sign message' -console $consoleTextBoxWallet
+            })
+            $WalletMenu.Items.Add($SignMessageItem)
+
+            # signrawtransactionwithwallet
+            $SignRawTransactionWithWalletItem = New-Object System.Windows.Forms.ToolStripMenuItem
+            $SignRawTransactionWithWalletItem.Text = "Sign raw transaction with wallet"
+            $SignRawTransactionWithWalletItem.Add_Click({
+                $command = 'signrawtransactionwithwallet'
+                $commandParameters = @{
+                    $command = @{
+                        'required' = @('Hexstring')
+                        'optional' = @('Inputs', 'Sighashtype')
+                        'types' = @{
+                            'Hexstring' = @{
+                                'type' = 'string'
+                            }
+                            'Inputs' = @{
+                                'type' = 'array'
+                            }
+                            'Sighashtype' = @{
+                                'type' = 'string'
+                            }
+                        }
+                    }
+                }
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'Sign raw transaction with wallet' -console $consoleTextBoxWallet
+            })
+            $WalletMenu.Items.Add($SignRawTransactionWithWalletItem)
+
+            # unloadwallet
+            $UnloadWalletItem = New-Object System.Windows.Forms.ToolStripMenuItem
+            $UnloadWalletItem.Text = "Unload wallet"
+            $UnloadWalletItem.Add_Click({
+                $command = 'unloadwallet'
+                $commandParameters = @{
+                    $command = @{
+                        'required' = @('Wallet_name')
+                        'optional' = @()
+                        'types' = @{
+                            'Wallet_name' = @{
+                                'type' = 'string'
+                            }
+                        }
+                    }
+                }
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'Unload wallet' -console $consoleTextBoxWallet
+            })
+            $WalletMenu.Items.Add($UnloadWalletItem)
+
+            # upgradetohd
+            $UpgradeToHDItem = New-Object System.Windows.Forms.ToolStripMenuItem
+            $UpgradeToHDItem.Text = "Upgrade to HD"
+            $UpgradeToHDItem.Add_Click({
+                $command = 'upgradetohd'
+                $commandParameters = @{
+                    $command = @{
+                        'required' = @('Mnemonic', 'Mnemonic_passphrase', 'Wallet_passphrase')
+                        'optional' = @()
+                        'types' = @{
+                            'Mnemonic' = @{
+                                'type' = 'string'
+                            }
+                            'Mnemonic_passphrase' = @{
+                                'type' = 'string'
+                            }
+                            'Wallet_passphrase' = @{
+                                'type' = 'string'
+                            }
+                        }
+                    }
+                }
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'Upgrade to HD' -console $consoleTextBoxWallet
+            })
+            $WalletMenu.Items.Add($UpgradeToHDItem)
+
+            # walletlock
+            $WalletLockItem = New-Object System.Windows.Forms.ToolStripMenuItem
+            $WalletLockItem.Text = "Lock wallet"
+            $WalletLockItem.Add_Click({
+                Execute-WalletCommand -command "walletlock" -buttonName "Lock wallet" -console $consoleTextBoxWallet
+            })
+            $WalletMenu.Items.Add($WalletLockItem)
+
+            # walletpassphrase
+            $WalletPassphraseItem = New-Object System.Windows.Forms.ToolStripMenuItem
+            $WalletPassphraseItem.Text = "Unlock wallet"
+            $WalletPassphraseItem.Add_Click({
+                $command = 'walletpassphrase'
+                $commandParameters = @{
+                    $command = @{
+                        'required' = @('Passphrase', 'Timeout')
+                        'optional' = @('Mixing only')
+                        'types' = @{
+                            'Passphrase' = @{
+                                'type' = 'string'
+                            }
+                            'Timeout' = @{
+                                'type' = 'int'
+                            }
+                            'Mixing only' = @{
+                                'type' = 'boolean'
+                                'defaultValue' = 'false'
+                            }
+                        }
+                    }
+                }
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'Unlock wallet' -console $consoleTextBoxWallet
+            })
+            $WalletMenu.Items.Add($WalletPassphraseItem)
+
+            # walletpassphrasechange
+            $WalletPassphraseChangeItem = New-Object System.Windows.Forms.ToolStripMenuItem
+            $WalletPassphraseChangeItem.Text = "Change wallet passphrase"
+            $WalletPassphraseChangeItem.Add_Click({
+                $command = 'walletpassphrasechange'
+                $commandParameters = @{
+                    $command = @{
+                        'required' = @('Old_passphrase', 'New_passphrase')
+                        'optional' = @()
+                        'types' = @{
+                            'Old_passphrase' = @{
+                                'type' = 'string'
+                            }
+                            'New_passphrase' = @{
+                                'type' = 'string'
+                            }
+                        }
+                    }
+                }
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'Change wallet passphrase' -console $consoleTextBoxWallet
+            })
+            $WalletMenu.Items.Add($WalletPassphraseChangeItem)
+            
             $WalletMenu.Show($Button, $Button.PointToClient([System.Windows.Forms.Cursor]::Position))
             $Button.ContextMenuStrip = $WalletMenu
             })
         }
-
     }
     $WalletTab.Controls.Add($Button)
     $top += 40
