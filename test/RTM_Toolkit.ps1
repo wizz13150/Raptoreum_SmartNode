@@ -64,36 +64,52 @@ function Execute-SmartnodeCommand {
     $console.AppendText(($output | Out-String))
 }
 
-
 function SaveFormData {
-    $config = @{
-        Pool     = $PoolTextBox.Text
-        User     = $UserTextBox.Text
-        Pass     = $PassTextBox.Text
-        Threads = $ThreadsTrackBar.Value
-    }
-    $json = ConvertTo-Json $config
-    Set-Content -Path "configminers.json" -Value $json
+    $checkedGPUs = ($MinerTab.Controls | Where-Object { $_ -is [System.Windows.Forms.CheckBox] -and $_.Checked } | ForEach-Object { $_.Text.Split(" ")[0].Replace("GPU", "").Replace(":", "") }) -join ","
+    $json = @"
+{
+    "Pool": "$($PoolTextBox.Text)",
+    "User": "$($UserTextBox.Text)",
+    "Pass": "$($PassTextBox.Text)",
+    "Threads": $($ThreadsTrackBar.Value),
+    "Platforms": "$($OpenCLPlatformsComboBox.SelectedItem)",
+    "OpenCLThreads": "$($OpenCLThreadsTextBox.Text)",
+    "CheckedGPUs": "$checkedGPUs"
+}
+"@
+    Set-Content -Path ".\configminer.json" -Value $json -Force
 }
 
 function LoadFormData {
-    if (Test-Path "configminers.json") {
-        $json = Get-Content -Path "configminers.json" -Raw
+    if (Test-Path ".\configminers.json") {
+        $json = Get-Content -Path ".\configminer.json" -Raw
         $config = ConvertFrom-Json $json
         $PoolTextBox.Text = $config.Pool
         $UserTextBox.Text = $config.User
         $PassTextBox.Text = $config.Pass
-        $ThreadsTrackBar.Value = $config.threads
+        $ThreadsTrackBar.Value = $config.Threads
         $SelectedThreadsLabel.Text = $config.Threads
+        $OpenCLPlatformsComboBox.SelectedItem = $config.Platforms
+        $OpenCLThreadsTextBox.Text = $config.OpenCLThreads        
+        $checkedGPUs = $config.CheckedGPUs -split ","
+        $MinerTab.Controls | Where-Object { $_ -is [System.Windows.Forms.CheckBox] } | ForEach-Object {
+            $gpuIndex = $_.Text.Split(" ")[0].Replace("GPU", "")
+            if ($checkedGPUs -contains $gpuIndex) {
+                $_.Checked = $true
+            } else {
+                $_.Checked = $false
+            }
+        }
     } else {
         $PoolTextBox.Text = "stratum+tcp://eu.flockpool.com:4444"
         $UserTextBox.Text = "RMRwCAkSJaWHGPiP1rF5EHuUYDTze2xw6J.wizz"
         $PassTextBox.Text = "tototo"
         $ThreadsTrackBar.Value = "4"
         $SelectedThreadsLabel.Text = "4"
+        $OpenCLPlatformsComboBox.SelectedItem = 'all'
+        $OpenCLThreadsTextBox.Text = "auto"
     }
 }
-
 function Set-ButtonWorking {
     param($index, $list)
     $global:oldText = $list[$index].Text
@@ -2862,13 +2878,25 @@ foreach ($btnText in $buttons) {
 
 
 # Miner tab buttons
-$buttons = @("Download RaptorWings", "Download XMRig", "Download CPuminer", "Launch RaptorWings", "Launch XMRig", "Launch CPuminer")
+$buttons = @("Download RaptorWings", "Download XMRig    (cpu)", "Download CPuminer (cpu)", "Download WildRig  (gpu)", "Launch RaptorWings", "Launch XMRig    (cpu)", "Launch CPuminer (cpu)", "Launch WildRig  (gpu)")
 $top = 10
 $left = 10
 $width = 350
 $height = 40
 $buttonListMiner = @()
+$separatorDrawn = $false
 foreach ($btnText in $buttons) {
+    # Ajouter de l'espace pour le séparateur et dessiner une ligne
+    if (($btnText -eq "Launch RaptorWings") -and (-not $separatorDrawn)) {
+        $top = [int]$top + 40 # Ajouter de l'espace pour le séparateur
+        $separator = New-Object System.Windows.Forms.Label
+        $separator.Location = New-Object System.Drawing.Point($left, 190 )
+        $separator.Size = New-Object System.Drawing.Size($width, 2)
+        $separator.BackColor = [System.Drawing.Color]::DarkGray
+        $MinerTab.Controls.Add($separator)
+        $separatorDrawn = $true
+    }
+    
     $buttonMiner = New-Object System.Windows.Forms.Button
     $buttonMiner.Location = New-Object System.Drawing.Point($left, $top)
     $buttonMiner.Size = New-Object System.Drawing.Size($width, $height)
@@ -2907,7 +2935,7 @@ foreach ($btnText in $buttons) {
                 Reset-Button -index 0 -list $buttonListMiner
             })
         }
-        'Download XMRig' {
+        'Download XMRig    (cpu)' {
             $buttonMiner.Add_Click({
                 Set-ButtonWorking -index 1 -list $buttonListMiner
                 $tempDir = [System.IO.Path]::GetTempPath()
@@ -2932,7 +2960,7 @@ foreach ($btnText in $buttons) {
                 Reset-Button -index 1 -list $buttonListMiner
             })
         }
-        'Download CPuminer' {
+        'Download CPuminer (cpu)' {
             $buttonMiner.Add_Click({
                 Set-ButtonWorking -index 2 -list $buttonListMiner
                 $tempDir = [System.IO.Path]::GetTempPath()
@@ -2974,6 +3002,32 @@ foreach ($btnText in $buttons) {
                 Reset-Button -index 2 -list $buttonListMiner
             })
         }
+        'Download WildRig  (gpu)' {
+            $buttonMiner.Add_Click({
+                Set-ButtonWorking -index 3 -list $buttonListMiner
+                $tempDir = [System.IO.Path]::GetTempPath()
+                $wildrigZip = "$tempDir" + "wildrig.zip"
+                $wildrigFolder = "$tempDir" + "wildrig"
+                $uri = "https://api.github.com/repos/andru-kun/wildrig-multi/releases/latest"
+                $response = Invoke-RestMethod -Uri $uri
+                $latestVersion = $response.tag_name
+                
+                $wildrigDownloadUrl = $response.assets | Where-Object { $_.name -match "wildrig-multi-windows" } | Select-Object -ExpandProperty browser_download_url
+                if ($wildrigDownloadUrl -eq $null) {
+                    [System.Windows.Forms.MessageBox]::Show("An error occurred while retrieving the download link for WildRig.", "Download WildRig", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
+                    return
+                }
+                try {
+                    Invoke-WebRequest -Uri $wildrigDownloadUrl -OutFile $wildrigZip
+                    & "C:\Program Files\7-Zip\7z.exe" x -y $wildrigZip -o"$wildrigFolder"
+                    [System.Windows.Forms.MessageBox]::Show("WildRig downloaded and extracted successfully to $wildrigFolder.", "Download WildRig", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
+                }
+                catch {
+                    [System.Windows.Forms.MessageBox]::Show("An error occurred while downloading or extracting WildRig.`r`nError message: $($Error[0].Exception.Message)", "Download WildRig", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
+                }
+                Reset-Button -index 3 -list $buttonListMiner
+            })
+        }
         'Launch RaptorWings' {
             $buttonMiner.Add_Click({
                 $tempDir = [System.IO.Path]::GetTempPath()
@@ -2981,7 +3035,7 @@ foreach ($btnText in $buttons) {
                 Start-Process $raptorwingsExePath -WindowStyle Normal
             })
         }
-        'Launch XMRig' {
+        'Launch XMRig    (cpu)' {
             $buttonMiner.Add_Click({
                 SaveFormData
                 $tempDir = [System.IO.Path]::GetTempPath()
@@ -3001,7 +3055,7 @@ foreach ($btnText in $buttons) {
                 }
             })
         }
-        'Launch CPuminer' {
+        'Launch CPuminer (cpu)' {
             $buttonMiner.Add_Click({
                 SaveFormData
                 $tempDir = [System.IO.Path]::GetTempPath()
@@ -3026,6 +3080,21 @@ foreach ($btnText in $buttons) {
                     Start-Process $cpuminerBatPath -WindowStyle Normal -Verb RunAs
                 } else {
                     [System.Windows.Forms.MessageBox]::Show("Unable to find cpuminer.bat.Please Download cpuminer first.", "Erreur", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
+                }
+            })
+        }
+        'Launch WildRig  (gpu)' {
+            $buttonMiner.Add_Click({
+                SaveFormData
+                $tempDir = [System.IO.Path]::GetTempPath()
+                $pool = $PoolTextBox.Text
+                $user = $UserTextBox.Text
+                $pass = $PassTextBox.Text
+                $wildrigPath = "$tempDir" + "wildrig\wildrig.exe"
+                if (Test-Path $wildrigPath) {
+                    Start-Process -FilePath $wildrigPath -ArgumentList "--algo ghostrider --url $pool --user $user --pass $pass" -WindowStyle Normal -Verb RunAs
+                } else {
+                    [System.Windows.MessageBox]::Show("WildRig executable not found. Please ensure it is downloaded and placed in the correct directory.", "WildRig not found", [System.Windows.MessageBoxButton]::OK, [System.Windows.MessageBoxImage]::Warning)
                 }
             })
         }
@@ -3104,15 +3173,74 @@ $ThreadsTrackBar.add_ValueChanged({
 })
 
 $SaveButton = New-Object System.Windows.Forms.Button
-$SaveButton.Location = New-Object System.Drawing.Point(690, 130)
+$SaveButton.Location = New-Object System.Drawing.Point(690, 180)
 $SaveButton.Size = New-Object System.Drawing.Size(120, 40)
-$SaveButton.Text = "Save"
+$SaveButton.Text = "Save settings"
 $SaveButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Standard
-$SaveButton.BackColor = [System.Drawing.Color]::LightGray
+$SaveButton.BackColor = [System.Drawing.Color]::White
 $SaveButton.Font = New-Object System.Drawing.Font("Consolas", 10)
 $SaveButton.Add_Click({ SaveFormData })
 $MinerTab.Controls.Add($SaveButton)
 
+# Wildrig parameters Label
+$WildrigParametersLabel = New-Object System.Windows.Forms.Label
+$WildrigParametersLabel.Location = New-Object System.Drawing.Point(400, 145)
+$WildrigParametersLabel.Size = New-Object System.Drawing.Size(200, 20)
+$WildrigParametersLabel.Text = "Wildrig parameters:"
+$MinerTab.Controls.Add($WildrigParametersLabel)
+
+# OpenCL Platforms Label and ComboBox
+$OpenCLPlatformsLabel = New-Object System.Windows.Forms.Label
+$OpenCLPlatformsLabel.Location = New-Object System.Drawing.Point(400, 175)
+$OpenCLPlatformsLabel.Size = New-Object System.Drawing.Size(120, 20)
+$OpenCLPlatformsLabel.Text = "OpenCL Platforms:"
+$MinerTab.Controls.Add($OpenCLPlatformsLabel)
+
+$OpenCLPlatformsComboBox = New-Object System.Windows.Forms.ComboBox
+$OpenCLPlatformsComboBox.Location = New-Object System.Drawing.Point(520, 175)
+$OpenCLPlatformsComboBox.Size = New-Object System.Drawing.Size(120, 21)
+$OpenCLPlatformsComboBox.DropDownStyle = [System.Windows.Forms.ComboBoxStyle]::DropDownList
+$OpenCLPlatformsComboBox.Items.AddRange(@('all', 'nvidia', 'amd'))
+$OpenCLPlatformsComboBox.SelectedItem = 'all'
+$MinerTab.Controls.Add($OpenCLPlatformsComboBox)
+
+# OpenCL Threads Label and TextBox
+$OpenCLThreadsLabel = New-Object System.Windows.Forms.Label
+$OpenCLThreadsLabel.Location = New-Object System.Drawing.Point(400, 205)
+$OpenCLThreadsLabel.Size = New-Object System.Drawing.Size(120, 20)
+$OpenCLThreadsLabel.Text = "OpenCL Threads:"
+$MinerTab.Controls.Add($OpenCLThreadsLabel)
+
+$OpenCLThreadsTextBox = New-Object System.Windows.Forms.TextBox
+$OpenCLThreadsTextBox.Location = New-Object System.Drawing.Point(520, 205)
+$OpenCLThreadsTextBox.Size = New-Object System.Drawing.Size(120, 20)
+$OpenCLThreadsTextBox.Text = "auto"
+$MinerTab.Controls.Add($OpenCLThreadsTextBox)
+
+# Get devices
+$tempDir = [System.IO.Path]::GetTempPath()
+$wildrigPath = "$tempDir" + "wildrig\wildrig.exe"
+$WildRigOutput = cmd /C "$wildrigPath --print-devices"
+$GPUs = ($WildRigOutput -split "`n")
+$GPUInfos = $GPUs | Where-Object { $_ -match '^GPU\s*#\d+:' } | ForEach-Object { $index = ($_ -split ':')[0] -replace "GPU #", ''; $name = ($_ -split '[(:]')[1].Trim(); New-Object PSObject -Property @{ Index = $index; Name = $name } }
+
+# Checkboxes
+$initialY = 235
+$y = $initialY
+$maxPerRow = 2
+$checkBoxCount = 0
+foreach ($GPUInfo in $GPUInfos) {
+    $CheckBox = New-Object System.Windows.Forms.CheckBox
+    $CheckBox.Location = New-Object System.Drawing.Point(400, $y)
+    $CheckBox.Size = New-Object System.Drawing.Size(180, 20)
+    $CheckBox.Text = "GPU$($GPUInfo.Index): $($GPUInfo.Name)"
+    $MinerTab.Controls.Add($CheckBox)
+    
+    $checkBoxCount++
+    if ($checkBoxCount % $maxPerRow -eq 0) {
+        $y += 25
+    }
+}
 
 # Help tab buttons
 $buttons = @("Raptoreum Website", "Raptoreum Documentation", "Raptoreum on Twitter", "Raptoreum Discord", "Raptoreum on Reddit")
@@ -3160,7 +3288,6 @@ foreach ($btnText in $buttons) {
             })
         }
     }
-    $buttonList += $localButton
     $HelpTab.Controls.Add($Button)
     $top += 40
 }
