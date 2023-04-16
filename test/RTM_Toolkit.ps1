@@ -2995,7 +2995,7 @@ foreach ($btnText in $buttons) {
                 $dir = "$tempDir" + "xmrig"
                 $xmrigPath = "$dir\xmrig-$($($response.tag_name).Substring(1))\xmrig.exe"        
                 if (Test-Path $xmrigPath) {
-                    Start-Process -FilePath $xmrigPath -ArgumentList "-a gr -o $pool -u $user -p $pass -t $threads" -WindowStyle Normal
+                    Start-Process -FilePath $xmrigPath -ArgumentList "-a gr -o $pool -u $user -p $pass -t $threads" -WindowStyle Normal -Verb RunAs
                 } else {
                     [System.Windows.MessageBox]::Show("XMRig executable not found. Please ensure it is downloaded and placed in the correct directory.", "XMRig not found", [System.Windows.MessageBoxButton]::OK, [System.Windows.MessageBoxImage]::Warning)
                 }
@@ -3023,7 +3023,7 @@ foreach ($btnText in $buttons) {
                     $config.pass = $pass
                     $config.threads = $threads
                     $config | ConvertTo-Json -Depth 20 | Set-Content $cpuminerConfigPath
-                    Start-Process $cpuminerBatPath
+                    Start-Process $cpuminerBatPath -WindowStyle Normal -Verb RunAs
                 } else {
                     [System.Windows.Forms.MessageBox]::Show("Unable to find cpuminer.bat.Please Download cpuminer first.", "Erreur", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
                 }
