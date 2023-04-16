@@ -374,10 +374,10 @@ function Show-CommandParametersForm {
                         $requiredValues += $realValues[$name]
                     } else {
                         $textBox = $form.Controls | Where-Object { $_.GetType() -eq [System.Windows.Forms.TextBox] -and $_.Location.Y -eq (($_.Location.Y - 20) / 30) * 30 + 20 }
-                        if ($types[$name].type.ToLower() -eq 'string' -and $textBox[$i].Text -eq '') {
+                        if ($types[$requiredParameters[$i]].type.ToLower() -eq 'string' -and $textBox[$i].Text -eq '') {
                             $requiredValues += '""'
                         }
-                        elseif ($types[$name].type.ToLower() -ne 'string' -and $textBox[$i].Text -eq '') {
+                        elseif ($types[$requiredParameters[$i]].type.ToLower() -ne 'string' -and $textBox[$i].Text -eq '') {
                             continue
                         }
                         else {
