@@ -8,13 +8,17 @@ $executablePath = "E:\Raptoreum\Wallet1.3.17.02\raptoreum-qt.exe"
 
 # Functions
 function Execute-Command {
-    param($command, $buttonName, $background, $console)
-    
+    param($command, $background, $console)
+
     if ($background) {
-        Start-Process -FilePath "cmd.exe" -ArgumentList "/c $command" -WindowStyle Normal
+        $job = Start-Job -ScriptBlock {
+            param ($command)
+            Start-Process -FilePath "cmd.exe" -ArgumentList "/c $command" -WindowStyle Normal
+        } -ArgumentList $command
+        $job | Wait-Job
         $console.Clear()
         $timestamp = Get-Date -Format "HH:mm:ss"
-        $console.AppendText("[$timestamp] > $buttonName (Executed in a new CMD window) ")
+        $console.AppendText("[$timestamp] > $command (Executed in a new CMD window) ")
     } else {
         $output = cmd /C $command 2>&1
         $console.Clear()
@@ -25,9 +29,13 @@ function Execute-Command {
 }
 
 function Execute-WalletCommand {
-    param($command, $buttonName, $console, $parameters)
+    param($command, $console, $parameters)
 
-    $output = cmd /C "$raptoreumcli $command $parameters" 2>&1
+    $job = Start-Job -ScriptBlock {
+        param ($command, $parameters, $raptoreumcli)
+        cmd /C "$raptoreumcli $command $parameters" 2>&1
+    } -ArgumentList $command, $parameters, $raptoreumcli
+    $output = $job | Wait-Job | Receive-Job
     $console.Clear()
     $timestamp = Get-Date -Format "HH:mm:ss"
     $console.AppendText("[$timestamp] > $command $parameters `n")
@@ -43,14 +51,19 @@ function Print-Command {
 }
 
 function Execute-SmartnodeCommand {
-    param($command, $buttonName, $console)
+    param($command, $console, $parameters)
 
-    $output = cmd /C "$smartnodecli smartnode $command" 2>&1
+    $job = Start-Job -ScriptBlock {
+        param ($command, $smartnodecli)
+        cmd /C "$smartnodecli smartnode $command" 2>&1
+    } -ArgumentList $command, $smartnodecli
+    $output = $job | Wait-Job | Receive-Job
     $console.Clear()
     $timestamp = Get-Date -Format "HH:mm:ss"
     $console.AppendText("[$timestamp] > smartnode $command  `n")
     $console.AppendText(($output | Out-String))
 }
+
 
 function SaveFormData {
     $config = @{
@@ -81,13 +94,26 @@ function LoadFormData {
     }
 }
 
+function Set-ButtonWorking {
+    param($index, $list)
+    $global:oldText = $list[$index].Text
+    $list[$index].Text = "Working..."
+}
+
+function Reset-Button {
+    param($index, $list)
+    $list[$index].Text = $global:oldText
+}
+
 function Show-CommandParametersForm {
     param(
-        [string]$command,
+        [string]$command, 
+        [System.Windows.Forms.Button]$button,
         [hashtable]$commandParameters,
         [System.Windows.Forms.TextBox]$console
     )
 
+    $realValues = @{}
     if ($commandParameters.ContainsKey($command)) {
         $parameters = $commandParameters[$command]
         $requiredParameters = $parameters['required']
@@ -173,6 +199,14 @@ function Show-CommandParametersForm {
                 if ($currentType.defaultValue) {
                     $comboBox.SelectedItem = $currentType.defaultValue
                 }
+                $comboBox.Add_SelectedIndexChanged({
+                    $selectedIndex = $comboBox.SelectedIndex
+                    if ($currentType.realValue) {
+                        $realValues[$name] = $currentType.realValue[$selectedIndex]
+                    } else {
+                        $realValues[$name] = $currentType.choices[$selectedIndex]
+                    }
+                })
                 $form.Controls.Add($comboBox)
             } else {
                 $textBox = New-Object System.Windows.Forms.TextBox
@@ -250,6 +284,14 @@ function Show-CommandParametersForm {
                 if ($currentType.defaultValue) {
                     $comboBox.SelectedItem = $currentType.defaultValue
                 }
+                $comboBox.Add_SelectedIndexChanged({
+                    $selectedIndex = $comboBox.SelectedIndex
+                    if ($types[$name].realValue) {
+                        $realValues[$name] = $types[$name].realValue[$selectedIndex]
+                    } else {
+                        $realValues[$name] = $types[$name].choices[$selectedIndex]
+                    }
+                })
                 $form.Controls.Add($comboBox)
             } else {
                 $textBox = New-Object System.Windows.Forms.TextBox
@@ -302,7 +344,7 @@ function Show-CommandParametersForm {
         $helpButton.Location = New-Object System.Drawing.Point(180, $y)
         $helpButton.Size = New-Object System.Drawing.Size(75, 25)
         $helpButton.Add_Click({
-            Execute-WalletCommand -command "help $command" -buttonName $command -console $consoleTextBoxWallet
+            Execute-WalletCommand -command "help $command" -console $consoleTextBoxWallet
             $form.Close()
         })
         $form.Controls.Add($helpButton)
@@ -328,15 +370,19 @@ function Show-CommandParametersForm {
                         $requiredValues += $comboBox[$i].SelectedItem.ToString()
                     }
                 } else {
-                    $textBox = $form.Controls | Where-Object { $_.GetType() -eq [System.Windows.Forms.TextBox] -and $_.Location.Y -eq (($_.Location.Y - 20) / 30) * 30 + 20 }
-                    if ($types[$requiredParameters[$i]].type.ToLower() -eq 'string' -and $textBox[$i].Text -eq '') {
-                        $requiredValues += '""'
-                    }
-                    elseif ($types[$requiredParameters[$i]].type.ToLower() -ne 'string' -and $textBox[$i].Text -eq '') {
-                        continue
-                    }
-                    else {
-                        $requiredValues += $textBox[$i].Text
+                    if ($types[$requiredParameters[$i]].type.ToLower() -eq 'choices') {
+                        $requiredValues += $realValues[$name]
+                    } else {
+                        $textBox = $form.Controls | Where-Object { $_.GetType() -eq [System.Windows.Forms.TextBox] -and $_.Location.Y -eq (($_.Location.Y - 20) / 30) * 30 + 20 }
+                        if ($types[$name].type.ToLower() -eq 'string' -and $textBox[$i].Text -eq '') {
+                            $requiredValues += '""'
+                        }
+                        elseif ($types[$name].type.ToLower() -ne 'string' -and $textBox[$i].Text -eq '') {
+                            continue
+                        }
+                        else {
+                            $requiredValues += $textBox[$i].Text
+                        }
                     }
                 }
             }
@@ -347,17 +393,21 @@ function Show-CommandParametersForm {
                         $optionalValues += $comboBox[$i - $requiredParameters.Count].SelectedItem.ToString()
                     }
                 } else {
-                    $textBox = $form.Controls | Where-Object { $_.GetType() -eq [System.Windows.Forms.TextBox] -and $_.Location.Y -eq (($_.Location.Y - 20) / 30) * 30 + 20 }
-                    if ($types[$optionalParameters[$i]].type.ToLower() -eq 'string' -and $textBox[$i + $requiredParameters.Count].Text -eq '') {
-                        $optionalValues += '""'
-                    }
-                    elseif ($types[$optionalParameters[$i]].type.ToLower() -ne 'string' -and $textBox[$i + $requiredParameters.Count].Text -eq '') {
-                        continue
-                    }
-                    else {
+                    if ($types[$optionalParameters[$i]].type.ToLower() -eq 'choices') {
+                        $optionalValues += $realValues[$name]
+                    } else {
                         $textBox = $form.Controls | Where-Object { $_.GetType() -eq [System.Windows.Forms.TextBox] -and $_.Location.Y -eq (($_.Location.Y - 20) / 30) * 30 + 20 }
-                        if ($textBox[$i + $requiredParameters.Count].Text -ne '' -or $types[$optionalParameters[$i]].type.ToLower() -eq 'string') {
-                            $optionalValues += $textBox[$i + $requiredParameters.Count].Text
+                        if ($types[$optionalParameters[$i]].type.ToLower() -eq 'string' -and $textBox[$i + $requiredParameters.Count].Text -eq '') {
+                            $optionalValues += '""'
+                        }
+                        elseif ($types[$optionalParameters[$i]].type.ToLower() -ne 'string' -and $textBox[$i + $requiredParameters.Count].Text -eq '') {
+                            continue
+                        }
+                        else {
+                            $textBox = $form.Controls | Where-Object { $_.GetType() -eq [System.Windows.Forms.TextBox] -and $_.Location.Y -eq (($_.Location.Y - 20) / 30) * 30 + 20 }
+                            if ($textBox[$i + $requiredParameters.Count].Text -ne '' -or $types[$optionalParameters[$i]].type.ToLower() -eq 'string') {
+                                $optionalValues += $textBox[$i + $requiredParameters.Count].Text
+                            }
                         }
                     }
                 }
@@ -399,7 +449,7 @@ $GeneralTab.Text = "General (todo)"
 $TabControl.Controls.Add($GeneralTab)
 
 $WalletTab = New-Object System.Windows.Forms.TabPage
-$WalletTab.Text = "Wallet (todo)"
+$WalletTab.Text = "Wallet"
 $TabControl.Controls.Add($WalletTab)
 
 $SmartnodeTab = New-Object System.Windows.Forms.TabPage
@@ -436,40 +486,58 @@ $consoleTextBoxWallet.ForeColor = [System.Drawing.Color]::Green
 $consoleTextBoxWallet.Font = New-Object System.Drawing.Font("Consolas", 9)
 $WalletTab.Controls.Add($consoleTextBoxWallet)
 
-# General buttons
-$buttons = @("Button 1", "Button 2")
+$consoleTextBoxgeneral = New-Object System.Windows.Forms.TextBox
+$consoleTextBoxgeneral.Location = New-Object System.Drawing.Point(400, 10)
+$consoleTextBoxgeneral.Size = New-Object System.Drawing.Size(520, 400)
+$consoleTextBoxgeneral.Multiline = $true
+$consoleTextBoxgeneral.ScrollBars = 'Vertical'
+$consoleTextBoxgeneral.ReadOnly = $true
+$consoleTextBoxgeneral.BackColor = [System.Drawing.Color]::Black
+$consoleTextBoxgeneral.ForeColor = [System.Drawing.Color]::Green
+$consoleTextBoxgeneral.Font = New-Object System.Drawing.Font("Consolas", 9)
+$GeneralTab.Controls.Add($consoleTextBoxgeneral)
+
+# General tab buttons
+$buttons = @("Get blockchain info", "Smartnode status")
 $top = 10
 $left = 10
 $width = 350
 $height = 40
+$buttonListGeneral = @()
 foreach ($btnText in $buttons) {
-    $Button = New-Object System.Windows.Forms.Button
-    $Button.Location = New-Object System.Drawing.Point($left, $top)
-    $Button.Size = New-Object System.Drawing.Size($width, $height)
-    $Button.Text = $btnText
-    $Button.FlatStyle = [System.Windows.Forms.FlatStyle]::Standard
-    $Button.BackColor = [System.Drawing.Color]::LightGray
-    $Button.ForeColor = [System.Drawing.Color]::Black
-    $Button.FlatAppearance.BorderSize = 1
-    $Button.FlatAppearance.BorderColor = [System.Drawing.Color]::DarkGray
-    $Button.Margin = New-Object System.Windows.Forms.Padding(0, 0, 0, 10)
-    $Button.Font = New-Object System.Drawing.Font("Consolas", 10)
+    $localButton = New-Object System.Windows.Forms.Button
+    $localButton.Location = New-Object System.Drawing.Point($left, $top)
+    $localButton.Size = New-Object System.Drawing.Size($width, $height)
+    $localButton.Text = $btnText
+    $localButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Standard
+    $localButton.BackColor = [System.Drawing.Color]::LightGray
+    $localButton.ForeColor = [System.Drawing.Color]::Black
+    $localButton.FlatAppearance.BorderSize = 1
+    $localButton.FlatAppearance.BorderColor = [System.Drawing.Color]::DarkGray
+    $localButton.Margin = New-Object System.Windows.Forms.Padding(0, 0, 0, 10)
+    $localButton.Font = New-Object System.Drawing.Font("Consolas", 10)
     switch ($btnText) {
         'Get blockchain info' {
-            $Button.Add_Click({
-                Execute-WalletCommand -command "getblockchaininfo" -buttonName "Get blockchain info"
+            $localButton.Add_Click({
+                Set-ButtonWorking -index 0 -list $buttonListGeneral
+                Execute-WalletCommand -command "getblockchaininfo" -console $consoleTextBoxgeneral
+                Reset-Button -index 0 -list $buttonListGeneral
             })
         }
         'Smartnode status' {
-            $Button.Add_Click({
-                Execute-SmartnodeCommand -command "status" -buttonName "Smartnode status"
+            $localButton.Add_Click({
+                Set-ButtonWorking -index 1 -list $buttonListGeneral
+                Execute-SmartnodeCommand -command "status" -console $consoleTextBoxgeneral
+                Reset-Button -index 1 -list $buttonListGeneral
             })
         }
     }
-    $GeneralTab.Controls.Add($Button)
+    $buttonListGeneral += $localButton    
+    foreach ($button in $buttonListGeneral) {
+        $GeneralTab.Controls.Add($button)
+    }
     $top += 40
 }
-
 
 # Wallet tab buttons
 $buttons = @("Install Wallet", "Apply a Bootstrap (admin todo)", "Blockchain", "Control/Evo/Generating/Mining", "Wallet", "Network", "Protx Commands", "Util", "Edit RaptoreumCore Config File")
@@ -477,42 +545,47 @@ $top = 10
 $left = 10
 $width = 350
 $height = 40
+$buttonListWallet = @()
 foreach ($btnText in $buttons) {
-    $Button = New-Object System.Windows.Forms.Button
-    $Button.Location = New-Object System.Drawing.Point($left, $top)
-    $Button.Size = New-Object System.Drawing.Size($width, $height)
-    $Button.Text = $btnText
-    $Button.FlatStyle = [System.Windows.Forms.FlatStyle]::Standard
-    $Button.BackColor = [System.Drawing.Color]::LightGray
-    $Button.ForeColor = [System.Drawing.Color]::Black
-    $Button.FlatAppearance.BorderSize = 1
-    $Button.FlatAppearance.BorderColor = [System.Drawing.Color]::DarkGray
-    $Button.Margin = New-Object System.Windows.Forms.Padding(0, 0, 0, 10)
-    $Button.Font = New-Object System.Drawing.Font("Consolas", 10)
+    $buttonWallet = New-Object System.Windows.Forms.Button
+    $buttonWallet.Location = New-Object System.Drawing.Point($left, $top)
+    $buttonWallet.Size = New-Object System.Drawing.Size($width, $height)
+    $buttonWallet.Text = $btnText
+    $buttonWallet.FlatStyle = [System.Windows.Forms.FlatStyle]::Standard
+    $buttonWallet.BackColor = [System.Drawing.Color]::LightGray
+    $buttonWallet.ForeColor = [System.Drawing.Color]::Black
+    $buttonWallet.FlatAppearance.BorderSize = 1
+    $buttonWallet.FlatAppearance.BorderColor = [System.Drawing.Color]::DarkGray
+    $buttonWallet.Margin = New-Object System.Windows.Forms.Padding(0, 0, 0, 10)
+    $buttonWallet.Font = New-Object System.Drawing.Font("Consolas", 10)
     switch ($btnText) {
         'Install Wallet' {
-            $Button.Add_Click({
+            $buttonWallet.Add_Click({
                 $installWalletUrl = "https://github.com/Raptor3um/raptoreum/releases/download/1.3.17.02/raptoreumcore-1.3.17-win64-setup.exe"
                 $installWalletPath = "$env:TEMP\raptoreumcore-win64-setup.exe"                
                 $wc = New-Object System.Net.WebClient
-                $wc.DownloadFile($installWalletUrl, $installWalletPath)                
-                Execute-Command -command "$installWalletPath"  -background $true -console $consoleTextBoxWallet
+                $wc.DownloadFile($installWalletUrl, $installWalletPath)
+                Set-ButtonWorking -index 0 -list $buttonListWallet
+                Execute-Command -command "$installWalletPath" -background $true -console $consoleTextBoxWallet
+                Reset-Button -index 0 -list $buttonListWallet
             })
         }
-        'Apply a Bootstrap' {
-            $Button.Add_Click({
+        'Apply a Bootstrap' { 
+            $buttonWallet.Add_Click({
                 $bootstrapUrl = "https://raw.githubusercontent.com/wizz13150/RaptoreumStuff/main/RTM_Bootstrap.bat"
                 $bootstrapPath = "$env:TEMP\RTM_Bootstrap.bat"        
                 $wc = New-Object System.Net.WebClient
                 $wc.DownloadFile($bootstrapUrl, $bootstrapPath)        
-                Execute-Command -command "cmd /c $bootstrapPath"  -background $true -console $consoleTextBoxWallet
+                Set-ButtonWorking -index 1 -list $buttonListWallet
+                Execute-Command -command "cmd /c $bootstrapPath" -background $true -console $consoleTextBoxWallet
+                Reset-Button -index 1 -list $buttonListWallet
             })
         }
         ###########################################
 ################## Blockchain BUTTON #####################
         ###########################################
         'Blockchain' {
-        $Button.Add_Click({
+        $buttonWallet.Add_Click({
             $BlockchainMenu = New-Object System.Windows.Forms.ContextMenuStrip
             # Limit menu height
             $dummyMenuItem = New-Object System.Windows.Forms.ToolStripMenuItem
@@ -543,7 +616,9 @@ foreach ($btnText in $buttons) {
                         }
                     }
                 }
-                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'Get address balance' -console $consoleTextBoxWallet
+                Set-ButtonWorking -index 2 -list $buttonListWallet
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -console $consoleTextBoxWallet
+                Reset-Button -index 2 -list $buttonListWallet
             })
             $BlockchainMenu.Items.Add($GetAddressBalanceItem)
 
@@ -566,7 +641,9 @@ foreach ($btnText in $buttons) {
                         }
                     }
                 }
-                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'Get address deltas' -console $consoleTextBoxWallet
+                Set-ButtonWorking -index 2 -list $buttonListWallet
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -console $consoleTextBoxWallet
+                Reset-Button -index 2 -list $buttonListWallet
             })
             $BlockchainMenu.Items.Add($GetAddressDeltasItem)
 
@@ -586,7 +663,9 @@ foreach ($btnText in $buttons) {
                         }
                     }
                 }
-                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'Get address mempool' -console $consoleTextBoxWallet
+                Set-ButtonWorking -index 2 -list $buttonListWallet
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -console $consoleTextBoxWallet
+                Reset-Button -index 2 -list $buttonListWallet
             })
             $BlockchainMenu.Items.Add($GetAddressMempoolItem)
 
@@ -609,7 +688,9 @@ foreach ($btnText in $buttons) {
                         }
                     }
                 }
-                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'Get address txids' -console $consoleTextBoxWallet
+                Set-ButtonWorking -index 2 -list $buttonListWallet
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -console $consoleTextBoxWallet
+                Reset-Button -index 2 -list $buttonListWallet
             })
             $BlockchainMenu.Items.Add($GetAddressTxidsItem)
 
@@ -632,7 +713,9 @@ foreach ($btnText in $buttons) {
                         }
                     }
                 }
-                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'Get address utxos' -console $consoleTextBoxWallet
+                Set-ButtonWorking -index 2 -list $buttonListWallet
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -console $consoleTextBoxWallet
+                Reset-Button -index 2 -list $buttonListWallet
             })
             $BlockchainMenu.Items.Add($GetAddressUtxosItem)
 
@@ -641,7 +724,9 @@ foreach ($btnText in $buttons) {
             $GetBlockchainInfoItem.Text = "Get blockchain info"
             $GetBlockchainInfoItem.Add_Click({
                 $command = 'getblockchaininfo'
+                Set-ButtonWorking -index 2 -list $buttonListWallet
                 Execute-WalletCommand -command $command -buttonName 'Get blockchain info' -console $consoleTextBoxWallet
+                Reset-Button -index 2 -list $buttonListWallet
             })
             $BlockchainMenu.Items.Add($GetBlockchainInfoItem)
 
@@ -650,7 +735,9 @@ foreach ($btnText in $buttons) {
             $GetBlockCountItem.Text = "Get block count"
             $GetBlockCountItem.Add_Click({
                 $command = 'getblockcount'
+                Set-ButtonWorking -index 2 -list $buttonListWallet
                 Execute-WalletCommand -command $command -buttonName 'Get block count' -console $consoleTextBoxWallet
+                Reset-Button -index 2 -list $buttonListWallet
             })
             $BlockchainMenu.Items.Add($GetBlockCountItem)
 
@@ -669,7 +756,9 @@ foreach ($btnText in $buttons) {
                         }
                     }
                 }
-                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'Get block hash' -console $consoleTextBoxWallet
+                Set-ButtonWorking -index 2 -list $buttonListWallet
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -console $consoleTextBoxWallet
+                Reset-Button -index 2 -list $buttonListWallet
             })
             $BlockchainMenu.Items.Add($GetBlockHashItem)
 
@@ -693,7 +782,9 @@ foreach ($btnText in $buttons) {
                         }
                     }
                 }
-                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'Get block header' -console $consoleTextBoxWallet
+                Set-ButtonWorking -index 2 -list $buttonListWallet
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -console $consoleTextBoxWallet
+                Reset-Button -index 2 -list $buttonListWallet
             })
             $BlockchainMenu.Items.Add($GetBlockHeaderItem)
 
@@ -703,19 +794,21 @@ foreach ($btnText in $buttons) {
             $GetBlockCountItem.Add_Click({
                 $command = 'getblockcount'
                 $commandParameters = @{}
-                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'Get block count' -console $consoleTextBoxWallet
+                Set-ButtonWorking -index 2 -list $buttonListWallet
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -console $consoleTextBoxWallet
+                Reset-Button -index 2 -list $buttonListWallet
             })
             $BlockchainMenu.Items.Add($GetBlockCountItem)
             
-            $BlockchainMenu.Show($Button, $Button.PointToClient([System.Windows.Forms.Cursor]::Position))
-            $Button.ContextMenuStrip = $BlockchainMenu
+            $BlockchainMenu.Show($buttonWallet, $buttonWallet.PointToClient([System.Windows.Forms.Cursor]::Position))
+            $buttonWallet.ContextMenuStrip = $BlockchainMenu
             })
         }
         ###########################################
 ########## Control/Evo/Generating/Mining BUTTON ###########
         ###########################################
         'Control/Evo/Generating/Mining' {
-        $Button.Add_Click({
+        $buttonWallet.Add_Click({
             $ControlMenu = New-Object System.Windows.Forms.ContextMenuStrip
             # Limit menu height
             $dummyMenuItem = New-Object System.Windows.Forms.ToolStripMenuItem
@@ -752,23 +845,21 @@ foreach ($btnText in $buttons) {
                         }
                     }
                 }
-                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'ProTX Quick Setup' -console $consoleTextBoxWallet
+                Set-ButtonWorking -index 3 -list $buttonListWallet
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -console $consoleTextBoxWallet
+                Reset-Button -index 3 -list $buttonListWallet
             })
             $ControlMenu.Items.Add($ProtxQuickSetupItem)
 
-
-
-
-
-            $ControlMenu.Show($Button, $Button.PointToClient([System.Windows.Forms.Cursor]::Position))
-            $Button.ContextMenuStrip = $ControlMenu
+            $ControlMenu.Show($buttonWallet, $buttonWallet.PointToClient([System.Windows.Forms.Cursor]::Position))
+            $buttonWallet.ContextMenuStrip = $ControlMenu
             })
         }
         ###########################################
 ################## Protx Commands BUTTON ###################
         ###########################################
         'Protx Commands' {
-        $Button.Add_Click({
+        $buttonWallet.Add_Click({
             $ProtxMenu = New-Object System.Windows.Forms.ContextMenuStrip
             # Limit menu height
             $dummyMenuItem = New-Object System.Windows.Forms.ToolStripMenuItem
@@ -783,19 +874,24 @@ foreach ($btnText in $buttons) {
             # protx quick_setup
             $ProtxQuickSetupItem = New-Object System.Windows.Forms.ToolStripMenuItem
             $ProtxQuickSetupItem.Text = "ProTX Quick Setup"
+
+            Set-ButtonWorking -index 6 -list $buttonListWallet
             # Detect IP
+            Write-Host "Commands here"
             $wanIP = Invoke-WebRequest -Uri "http://ipecho.net/plain" -UseBasicParsing | Select-Object -ExpandProperty Content
             $wanIP
 
             # Detect last 200 transactions !$Null
             $transactions = cmd /C "$raptoreumcli listtransactions * 200 0" 2>&1 | ConvertFrom-Json
             $transactionsForDropDown = @()
+            $transactionsForRealValue = @()
             foreach ($transaction in $transactions) {
                 if ($transaction.category -eq "send" -and $transaction.amount -eq 1800000) {
                     $txid = $transaction.txid
                     $shortTxid = $txid.Substring(0, 15) + "..." + $txid.Substring($txid.Length - 15)
                     $amount = [math]::Abs($transaction.amount)
                     $transactionsForDropDown += "$shortTxid - $amount RTM"
+                    $transactionsForRealValue += $txid
                 }
             }
             $transactionsForDropDown
@@ -803,17 +899,20 @@ foreach ($btnText in $buttons) {
             # Detect addresses with balance > 1 RTM and <= 100 RTM for fee
             $unspent = cmd /C "$raptoreumcli listunspent" 2>&1 | ConvertFrom-Json
             $addressesForDropDown = @()
+            $addressesForRealValue = @()
             $counter = 0
             foreach ($entry in $unspent) {
                 if ([double]$entry.amount -gt 1 -and [double]$entry.amount -le 100) {
                     $shortAddress = $entry.address.Substring(0, 12) + "..." + $entry.address.Substring($entry.address.Length - 12)
                     $addressesForDropDown += "$shortAddress - $([double]$entry.amount) RTM"
+                    $addressesForRealValue += $entry.address
                     $counter++
                 }
                 if ($counter -eq 30) { break }
             }
             $addressesForDropDown
-
+            Reset-Button -index 6 -list $buttonListWallet
+            
             $ProtxQuickSetupItem.Add_Click({
                 $command = 'protx quick_setup'
                 $commandParameters = @{
@@ -824,6 +923,7 @@ foreach ($btnText in $buttons) {
                             'collateralHash' = @{
                                 'type' = 'choices'
                                 'choices' = $transactionsForDropDown
+                                'realValue' = $transactionsForRealValue
                             }
                             'collateralIndex' = @{
                                 'type' = 'string'
@@ -836,11 +936,14 @@ foreach ($btnText in $buttons) {
                             'feeSourceAddress' = @{
                                 'type' = 'choices'
                                 'choices' = $addressesForDropDown
+                                'realValue' = $addressesForRealValue
                             }
                         }
                     }
                 }
-                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'ProTX Quick Setup' -console $consoleTextBoxWallet
+                Set-ButtonWorking -index 6 -list $buttonListWallet
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -console $consoleTextBoxWallet
+                Reset-Button -index 6 -list $buttonListWallet
             })
             $ProtxMenu.Items.Add($ProtxQuickSetupItem)
 
@@ -878,7 +981,9 @@ foreach ($btnText in $buttons) {
                         }
                     }
                 }
-                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'ProTX Register Fund' -console $consoleTextBoxWallet
+                Set-ButtonWorking -index 6 -list $buttonListWallet
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -console $consoleTextBoxWallet
+                Reset-Button -index 6 -list $buttonListWallet
             })
             $ProtxMenu.Items.Add($ProtxRegisterFundItem)
 
@@ -919,7 +1024,9 @@ foreach ($btnText in $buttons) {
                         }
                     }
                 }
-                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'ProTX Register Prepare' -console $consoleTextBoxWallet
+                Set-ButtonWorking -index 6 -list $buttonListWallet
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -console $consoleTextBoxWallet
+                Reset-Button -index 6 -list $buttonListWallet
             })
             $ProtxMenu.Items.Add($ProtxRegisterPrepareItem)
 
@@ -942,7 +1049,9 @@ foreach ($btnText in $buttons) {
                         }
                     }
                 }
-                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'ProTX Register Submit' -console $consoleTextBoxWallet
+                Set-ButtonWorking -index 6 -list $buttonListWallet
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -console $consoleTextBoxWallet
+                Reset-Button -index 6 -list $buttonListWallet
             })
             $ProtxMenu.Items.Add($ProtxRegisterSubmitItem)
 
@@ -971,7 +1080,9 @@ foreach ($btnText in $buttons) {
                         }
                     }
                 }
-                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'ProTX List' -console $consoleTextBoxWallet
+                Set-ButtonWorking -index 6 -list $buttonListWallet
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -console $consoleTextBoxWallet
+                Reset-Button -index 6 -list $buttonListWallet
             })
             $ProtxMenu.Items.Add($ProtxListItem)
 
@@ -991,7 +1102,9 @@ foreach ($btnText in $buttons) {
                         }
                     }
                 }
-                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'ProTX Info' -console $consoleTextBoxWallet
+                Set-ButtonWorking -index 6 -list $buttonListWallet
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -console $consoleTextBoxWallet
+                Reset-Button -index 6 -list $buttonListWallet
             })
             $ProtxMenu.Items.Add($ProtxInfoItem)
 
@@ -1023,7 +1136,9 @@ foreach ($btnText in $buttons) {
                         }
                     }
                 }
-                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'ProTX Update Service' -console $consoleTextBoxWallet
+                Set-ButtonWorking -index 6 -list $buttonListWallet
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -console $consoleTextBoxWallet
+                Reset-Button -index 6 -list $buttonListWallet
             })
             $ProtxMenu.Items.Add($ProtxUpdateServiceItem)
 
@@ -1055,7 +1170,9 @@ foreach ($btnText in $buttons) {
                         }
                     }
                 }
-                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'ProTX Update Registrar' -console $consoleTextBoxWallet
+                Set-ButtonWorking -index 6 -list $buttonListWallet
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -console $consoleTextBoxWallet
+                Reset-Button -index 6 -list $buttonListWallet
             })
             $ProtxMenu.Items.Add($ProtxUpdateRegistrarItem)
 
@@ -1081,7 +1198,9 @@ foreach ($btnText in $buttons) {
                         }
                     }
                 }
-                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'ProTX Revoke' -console $consoleTextBoxWallet
+                Set-ButtonWorking -index 6 -list $buttonListWallet
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -console $consoleTextBoxWallet
+                Reset-Button -index 6 -list $buttonListWallet
             })
             $ProtxMenu.Items.Add($ProtxRevokeItem)
 
@@ -1104,50 +1223,21 @@ foreach ($btnText in $buttons) {
                         }
                     }
                 }
-                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'ProTX Diff' -console $consoleTextBoxWallet
+                Set-ButtonWorking -index 6 -list $buttonListWallet
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -console $consoleTextBoxWallet
+                Reset-Button -index 6 -list $buttonListWallet
             })
             $ProtxMenu.Items.Add($ProtxDiffItem)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-            $ProtxMenu.Show($Button, $Button.PointToClient([System.Windows.Forms.Cursor]::Position))
-            $Button.ContextMenuStrip = $ProtxMenu
+            
+            $ProtxMenu.Show($buttonWallet, $buttonWallet.PointToClient([System.Windows.Forms.Cursor]::Position))
+            $buttonWallet.ContextMenuStrip = $ProtxMenu
             })
         }
         ###########################################
 ###################### WALLET BUTTON ######################
         ###########################################
         'Wallet' {
-        $Button.Add_Click({
+        $buttonWallet.Add_Click({
             $WalletMenu = New-Object System.Windows.Forms.ContextMenuStrip
             # Limit menu height
             $dummyMenuItem = New-Object System.Windows.Forms.ToolStripMenuItem
@@ -1175,7 +1265,9 @@ foreach ($btnText in $buttons) {
                         }
                     }
                 }
-                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'Backup wallet' -console $consoleTextBoxWallet
+                Set-ButtonWorking -index 4 -list $buttonListWallet
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -console $consoleTextBoxWallet
+                Reset-Button -index 4 -list $buttonListWallet
             })
             $WalletMenu.Items.Add($BackupWalletItem)
 
@@ -1195,7 +1287,9 @@ foreach ($btnText in $buttons) {
                         }
                     }
                 }
-                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'Create wallet' -console $consoleTextBoxWallet
+                Set-ButtonWorking -index 4 -list $buttonListWallet
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -console $consoleTextBoxWallet
+                Reset-Button -index 4 -list $buttonListWallet
             })
             $WalletMenu.Items.Add($CreateWalletItem)
 
@@ -1215,7 +1309,9 @@ foreach ($btnText in $buttons) {
                         }
                     }
                 }
-                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'Get address info' -console $consoleTextBoxWallet
+                Set-ButtonWorking -index 4 -list $buttonListWallet
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -console $consoleTextBoxWallet
+                Reset-Button -index 4 -list $buttonListWallet
             })
             $WalletMenu.Items.Add($GetAddressInfoItem)
 
@@ -1248,7 +1344,9 @@ foreach ($btnText in $buttons) {
                         }
                     }
                 }
-                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'Get balance' -console $consoleTextBoxWallet
+                Set-ButtonWorking -index 4 -list $buttonListWallet
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -console $consoleTextBoxWallet
+                Reset-Button -index 4 -list $buttonListWallet
             })
             $WalletMenu.Items.Add($GetBalanceItem)
 
@@ -1268,7 +1366,9 @@ foreach ($btnText in $buttons) {
                         }
                     }
                 }
-                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'Get new address' -console $consoleTextBoxWallet
+                Set-ButtonWorking -index 4 -list $buttonListWallet
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -console $consoleTextBoxWallet
+                Reset-Button -index 4 -list $buttonListWallet
             })
             $WalletMenu.Items.Add($GetNewAddressItem)
 
@@ -1292,7 +1392,9 @@ foreach ($btnText in $buttons) {
                         }
                     }
                 }
-                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'Get transaction' -console $consoleTextBoxWallet
+                Set-ButtonWorking -index 4 -list $buttonListWallet
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -console $consoleTextBoxWallet
+                Reset-Button -index 4 -list $buttonListWallet
             })
             $WalletMenu.Items.Add($GetTransactionItem)
 
@@ -1304,7 +1406,9 @@ foreach ($btnText in $buttons) {
                 $commandParameters = @{
                     $command = @{}
                 }
-                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'Get wallet info' -console $consoleTextBoxWallet
+                Set-ButtonWorking -index 4 -list $buttonListWallet
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -console $consoleTextBoxWallet
+                Reset-Button -index 4 -list $buttonListWallet
             })
             $WalletMenu.Items.Add($GetWalletInfoItem)
 
@@ -1335,7 +1439,9 @@ foreach ($btnText in $buttons) {
                         }
                     }
                 }
-                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'Import address' -console $consoleTextBoxWallet
+                Set-ButtonWorking -index 4 -list $buttonListWallet
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -console $consoleTextBoxWallet
+                Reset-Button -index 4 -list $buttonListWallet
             })
             $WalletMenu.Items.Add($ImportAddressItem)
 
@@ -1396,7 +1502,9 @@ foreach ($btnText in $buttons) {
                         }
                     }
                 }
-                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'Send to address' -console $consoleTextBoxWallet
+                Set-ButtonWorking -index 4 -list $buttonListWallet
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -console $consoleTextBoxWallet
+                Reset-Button -index 4 -list $buttonListWallet
             })
             $WalletMenu.Items.Add($SendToAddressItem)
 
@@ -1420,7 +1528,9 @@ foreach ($btnText in $buttons) {
                         }
                     }
                 }
-                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'Abandon transaction' -console $consoleTextBoxWallet
+                Set-ButtonWorking -index 4 -list $buttonListWallet
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -console $consoleTextBoxWallet
+                Reset-Button -index 4 -list $buttonListWallet
             })
             $WalletMenu.Items.Add($AbandonTransactionItem)
 
@@ -1430,7 +1540,9 @@ foreach ($btnText in $buttons) {
             $AbortRescanItem.Add_Click({
                 $command = 'abortrescan'
                 $commandParameters = @{}
-                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'Abort rescan' -console $consoleTextBoxWallet
+                Set-ButtonWorking -index 4 -list $buttonListWallet
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -console $consoleTextBoxWallet
+                Reset-Button -index 4 -list $buttonListWallet
             })
             $WalletMenu.Items.Add($AbortRescanItem)
 
@@ -1456,7 +1568,9 @@ foreach ($btnText in $buttons) {
                         }
                     }
                 }
-                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'Add multisig address' -console $consoleTextBoxWallet
+                Set-ButtonWorking -index 4 -list $buttonListWallet
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -console $consoleTextBoxWallet
+                Reset-Button -index 4 -list $buttonListWallet
             })
             $WalletMenu.Items.Add($AddMultisigAddressItem)
 
@@ -1476,7 +1590,9 @@ foreach ($btnText in $buttons) {
                         }
                     }
                 }
-                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'Dump private key' -console $consoleTextBoxWallet
+                Set-ButtonWorking -index 4 -list $buttonListWallet
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -console $consoleTextBoxWallet
+                Reset-Button -index 4 -list $buttonListWallet
             })
             $WalletMenu.Items.Add($DumpPrivKeyItem)
 
@@ -1496,7 +1612,9 @@ foreach ($btnText in $buttons) {
                         }
                     }
                 }
-                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'Dump wallet' -console $consoleTextBoxWallet
+                Set-ButtonWorking -index 4 -list $buttonListWallet
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -console $consoleTextBoxWallet
+                Reset-Button -index 4 -list $buttonListWallet
             })
             $WalletMenu.Items.Add($DumpWalletItem)
 
@@ -1516,7 +1634,9 @@ foreach ($btnText in $buttons) {
                         }
                     }
                 }
-                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'Encrypt wallet' -console $consoleTextBoxWallet
+                Set-ButtonWorking -index 4 -list $buttonListWallet
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -console $consoleTextBoxWallet
+                Reset-Button -index 4 -list $buttonListWallet
             })
             $WalletMenu.Items.Add($EncryptWalletItem)
 
@@ -1536,7 +1656,9 @@ foreach ($btnText in $buttons) {
                         }
                     }
                 }
-                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'Get account (deprecated)' -console $consoleTextBoxWallet
+                Set-ButtonWorking -index 4 -list $buttonListWallet
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -console $consoleTextBoxWallet
+                Reset-Button -index 4 -list $buttonListWallet
             })
             $WalletMenu.Items.Add($GetAccountItem)
 
@@ -1556,7 +1678,9 @@ foreach ($btnText in $buttons) {
                         }
                     }
                 }
-                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'Get account address (deprecated)' -console $consoleTextBoxWallet
+                Set-ButtonWorking -index 4 -list $buttonListWallet
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -console $consoleTextBoxWallet
+                Reset-Button -index 4 -list $buttonListWallet
             })
             $WalletMenu.Items.Add($GetAccountAddressItem)
 
@@ -1576,7 +1700,9 @@ foreach ($btnText in $buttons) {
                         }
                     }
                 }
-                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'Get address by account (deprecated)' -console $consoleTextBoxWallet
+                Set-ButtonWorking -index 4 -list $buttonListWallet
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -console $consoleTextBoxWallet
+                Reset-Button -index 4 -list $buttonListWallet
             })
             $WalletMenu.Items.Add($GetAddressByAccountItem)
 
@@ -1596,7 +1722,9 @@ foreach ($btnText in $buttons) {
                         }
                     }
                 }
-                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'Get addresses by label' -console $consoleTextBoxWallet
+                Set-ButtonWorking -index 4 -list $buttonListWallet
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -console $consoleTextBoxWallet
+                Reset-Button -index 4 -list $buttonListWallet
             })
             $WalletMenu.Items.Add($GetAddressesByLabelItem)
 
@@ -1612,7 +1740,9 @@ foreach ($btnText in $buttons) {
                         'types' = @{}
                     }
                 }
-                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'Get raw change address' -console $consoleTextBoxWallet
+                Set-ButtonWorking -index 4 -list $buttonListWallet
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -console $consoleTextBoxWallet
+                Reset-Button -index 4 -list $buttonListWallet
             })
             $WalletMenu.Items.Add($GetRawChangeAddressItem)
 
@@ -1635,7 +1765,9 @@ foreach ($btnText in $buttons) {
                         }
                     }
                 }
-                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'Get received by account (deprecated)' -console $consoleTextBoxWallet
+                Set-ButtonWorking -index 4 -list $buttonListWallet
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -console $consoleTextBoxWallet
+                Reset-Button -index 4 -list $buttonListWallet
             })
             $WalletMenu.Items.Add($GetReceivedByAccountItem)
 
@@ -1662,7 +1794,9 @@ foreach ($btnText in $buttons) {
                         }
                     }
                 }
-                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'Get received by address' -console $consoleTextBoxWallet
+                Set-ButtonWorking -index 4 -list $buttonListWallet
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -console $consoleTextBoxWallet
+                Reset-Button -index 4 -list $buttonListWallet
             })
             $WalletMenu.Items.Add($GetReceivedByAddressItem)
 
@@ -1678,7 +1812,9 @@ foreach ($btnText in $buttons) {
                         'types' = @{}
                     }
                 }
-                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'Get unconfirmed balance' -console $consoleTextBoxWallet
+                Set-ButtonWorking -index 4 -list $buttonListWallet
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -console $consoleTextBoxWallet
+                Reset-Button -index 4 -list $buttonListWallet
             })
             $WalletMenu.Items.Add($GetUnconfirmedBalanceItem)
 
@@ -1701,7 +1837,9 @@ foreach ($btnText in $buttons) {
                         }
                     }
                 }
-                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'Import Electrum wallet' -console $consoleTextBoxWallet
+                Set-ButtonWorking -index 4 -list $buttonListWallet
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -console $consoleTextBoxWallet
+                Reset-Button -index 4 -list $buttonListWallet
             })
             $WalletMenu.Items.Add($ImportElectrumWalletItem)
 
@@ -1730,7 +1868,9 @@ foreach ($btnText in $buttons) {
                         }
                     }
                 }
-                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'Import multi' -console $consoleTextBoxWallet
+                Set-ButtonWorking -index 4 -list $buttonListWallet
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -console $consoleTextBoxWallet
+                Reset-Button -index 4 -list $buttonListWallet
             })
             $WalletMenu.Items.Add($ImportMultiItem)
 
@@ -1757,7 +1897,9 @@ foreach ($btnText in $buttons) {
                         }
                     }
                 }
-                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'Import private key' -console $consoleTextBoxWallet
+                Set-ButtonWorking -index 4 -list $buttonListWallet
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -console $consoleTextBoxWallet
+                Reset-Button -index 4 -list $buttonListWallet
             })
             $WalletMenu.Items.Add($ImportPrivKeyItem)
 
@@ -1773,7 +1915,9 @@ foreach ($btnText in $buttons) {
                         'types' = @{}
                     }
                 }
-                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'Import pruned funds' -console $consoleTextBoxWallet
+                Set-ButtonWorking -index 4 -list $buttonListWallet
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -console $consoleTextBoxWallet
+                Reset-Button -index 4 -list $buttonListWallet
             })
             $WalletMenu.Items.Add($ImportPrunedFundsItem)
 
@@ -1800,7 +1944,9 @@ foreach ($btnText in $buttons) {
                         }
                     }
                 }
-                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'Import public key' -console $consoleTextBoxWallet
+                Set-ButtonWorking -index 4 -list $buttonListWallet
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -console $consoleTextBoxWallet
+                Reset-Button -index 4 -list $buttonListWallet
             })
             $WalletMenu.Items.Add($ImportPubKeyItem)
 
@@ -1820,7 +1966,9 @@ foreach ($btnText in $buttons) {
                         }
                     }
                 }
-                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'Import wallet' -console $consoleTextBoxWallet
+                Set-ButtonWorking -index 4 -list $buttonListWallet
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -console $consoleTextBoxWallet
+                Reset-Button -index 4 -list $buttonListWallet
             })
             $WalletMenu.Items.Add($ImportWalletItem)
 
@@ -1841,7 +1989,9 @@ foreach ($btnText in $buttons) {
                         }
                     }
                 }
-                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'Keepass' -console $consoleTextBoxWallet
+                Set-ButtonWorking -index 4 -list $buttonListWallet
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -console $consoleTextBoxWallet
+                Reset-Button -index 4 -list $buttonListWallet
             })
             $WalletMenu.Items.Add($KeepassItem)
 
@@ -1861,7 +2011,9 @@ foreach ($btnText in $buttons) {
                         }
                     }
                 }
-                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'Keypool refill' -console $consoleTextBoxWallet
+                Set-ButtonWorking -index 4 -list $buttonListWallet
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -console $consoleTextBoxWallet
+                Reset-Button -index 4 -list $buttonListWallet
             })
             $WalletMenu.Items.Add($KeypoolRefillItem)
 
@@ -1881,7 +2033,9 @@ foreach ($btnText in $buttons) {
                         }
                     }
                 }
-                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'List address balances' -console $consoleTextBoxWallet
+                Set-ButtonWorking -index 4 -list $buttonListWallet
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -console $consoleTextBoxWallet
+                Reset-Button -index 4 -list $buttonListWallet
             })
             $WalletMenu.Items.Add($ListAddressBalancesItem)
 
@@ -1898,7 +2052,9 @@ foreach ($btnText in $buttons) {
                         }
                     }
                 }
-                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'List address groupings' -console $consoleTextBoxWallet
+                Set-ButtonWorking -index 4 -list $buttonListWallet
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -console $consoleTextBoxWallet
+                Reset-Button -index 4 -list $buttonListWallet
             })
             $WalletMenu.Items.Add($ListAddressGroupingsItem)
 
@@ -1918,7 +2074,9 @@ foreach ($btnText in $buttons) {
                         }
                     }
                 }
-                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'List labels' -console $consoleTextBoxWallet
+                Set-ButtonWorking -index 4 -list $buttonListWallet
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -console $consoleTextBoxWallet
+                Reset-Button -index 4 -list $buttonListWallet
             })
             $WalletMenu.Items.Add($ListLabelsItem)
 
@@ -1935,7 +2093,9 @@ foreach ($btnText in $buttons) {
                         }
                     }
                 }
-                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'List lock unspent' -console $consoleTextBoxWallet
+                Set-ButtonWorking -index 4 -list $buttonListWallet
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -console $consoleTextBoxWallet
+                Reset-Button -index 4 -list $buttonListWallet
             })
             $WalletMenu.Items.Add($ListLockUnspentItem)
 
@@ -1967,7 +2127,9 @@ foreach ($btnText in $buttons) {
                         }
                     }
                 }
-                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'List received by address' -console $consoleTextBoxWallet
+                Set-ButtonWorking -index 4 -list $buttonListWallet
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -console $consoleTextBoxWallet
+                Reset-Button -index 4 -list $buttonListWallet
             })
             $WalletMenu.Items.Add($ListReceivedByAddressItem)
 
@@ -1996,7 +2158,9 @@ foreach ($btnText in $buttons) {
                         }
                     }
                 }
-                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'Listsinceblock' -console $consoleTextBoxWallet
+                Set-ButtonWorking -index 4 -list $buttonListWallet
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -console $consoleTextBoxWallet
+                Reset-Button -index 4 -list $buttonListWallet
             })
             $WalletMenu.Items.Add($ListsinceblockItem)
 
@@ -2025,7 +2189,9 @@ foreach ($btnText in $buttons) {
                         }
                     }
                 }
-                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'List transactions' -console $consoleTextBoxWallet
+                Set-ButtonWorking -index 4 -list $buttonListWallet
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -console $consoleTextBoxWallet
+                Reset-Button -index 4 -list $buttonListWallet
             })
             $WalletMenu.Items.Add($ListTransactionsItem)
 
@@ -2068,7 +2234,9 @@ foreach ($btnText in $buttons) {
                         }
                     }
                 }
-                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'List unspent' -console $consoleTextBoxWallet
+                Set-ButtonWorking -index 4 -list $buttonListWallet
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -console $consoleTextBoxWallet
+                Reset-Button -index 4 -list $buttonListWallet
             })
             $WalletMenu.Items.Add($ListUnspentItem)
 
@@ -2084,7 +2252,9 @@ foreach ($btnText in $buttons) {
                         'types' = @{}
                     }
                 }
-                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'List wallets' -console $consoleTextBoxWallet
+                Set-ButtonWorking -index 4 -list $buttonListWallet
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -console $consoleTextBoxWallet
+                Reset-Button -index 4 -list $buttonListWallet
             })
             $WalletMenu.Items.Add($ListWalletsItem)
 
@@ -2104,7 +2274,9 @@ foreach ($btnText in $buttons) {
                         }
                     }
                 }
-                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'Load wallet' -console $consoleTextBoxWallet
+                Set-ButtonWorking -index 4 -list $buttonListWallet
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -console $consoleTextBoxWallet
+                Reset-Button -index 4 -list $buttonListWallet
             })
             $WalletMenu.Items.Add($LoadWalletItem)
 
@@ -2135,7 +2307,9 @@ foreach ($btnText in $buttons) {
                         }
                     }
                 }
-                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'Lock unspent' -console $consoleTextBoxWallet
+                Set-ButtonWorking -index 4 -list $buttonListWallet
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -console $consoleTextBoxWallet
+                Reset-Button -index 4 -list $buttonListWallet
             })
             $WalletMenu.Items.Add($LockUnspentItem)
 
@@ -2167,7 +2341,9 @@ foreach ($btnText in $buttons) {
                         }
                     }
                 }
-                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'Move' -console $consoleTextBoxWallet
+                Set-ButtonWorking -index 4 -list $buttonListWallet
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -console $consoleTextBoxWallet
+                Reset-Button -index 4 -list $buttonListWallet
             })
             $WalletMenu.Items.Add($MoveItem)
 
@@ -2187,7 +2363,9 @@ foreach ($btnText in $buttons) {
                         }
                     }
                 }
-                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'Remove address' -console $consoleTextBoxWallet
+                Set-ButtonWorking -index 4 -list $buttonListWallet
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -console $consoleTextBoxWallet
+                Reset-Button -index 4 -list $buttonListWallet
             })
             $WalletMenu.Items.Add($RemoveAddressItem)
 
@@ -2207,7 +2385,9 @@ foreach ($btnText in $buttons) {
                         }
                     }
                 }
-                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'Remove pruned funds' -console $consoleTextBoxWallet
+                Set-ButtonWorking -index 4 -list $buttonListWallet
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -console $consoleTextBoxWallet
+                Reset-Button -index 4 -list $buttonListWallet
             })
             $WalletMenu.Items.Add($RemovePrunedFundsItem)
 
@@ -2230,7 +2410,9 @@ foreach ($btnText in $buttons) {
                         }
                     }
                 }
-                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'Rescan blockchain' -console $consoleTextBoxWallet
+                Set-ButtonWorking -index 4 -list $buttonListWallet
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -console $consoleTextBoxWallet
+                Reset-Button -index 4 -list $buttonListWallet
             })
             $WalletMenu.Items.Add($RescanBlockchainItem)
 
@@ -2281,7 +2463,9 @@ foreach ($btnText in $buttons) {
                         }
                     }
                 }
-                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'Send from' -console $consoleTextBoxWallet
+                Set-ButtonWorking -index 4 -list $buttonListWallet
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -console $consoleTextBoxWallet
+                Reset-Button -index 4 -list $buttonListWallet
             })
             $WalletMenu.Items.Add($SendFromItem)
 
@@ -2341,7 +2525,9 @@ foreach ($btnText in $buttons) {
                         }
                     }
                 }
-                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'Send many' -console $consoleTextBoxWallet
+                Set-ButtonWorking -index 4 -list $buttonListWallet
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -console $consoleTextBoxWallet
+                Reset-Button -index 4 -list $buttonListWallet
             })
             $WalletMenu.Items.Add($SendManyItem)
 
@@ -2363,7 +2549,9 @@ foreach ($btnText in $buttons) {
                         }
                     }
                 }
-                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'Set account' -console $consoleTextBoxWallet
+                Set-ButtonWorking -index 4 -list $buttonListWallet
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -console $consoleTextBoxWallet
+                Reset-Button -index 4 -list $buttonListWallet
             })
             $WalletMenu.Items.Add($SetAccountItem)
 
@@ -2382,7 +2570,9 @@ foreach ($btnText in $buttons) {
                         }
                     }
                 }
-                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'Set coinjoin amount' -console $consoleTextBoxWallet
+                Set-ButtonWorking -index 4 -list $buttonListWallet
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -console $consoleTextBoxWallet
+                Reset-Button -index 4 -list $buttonListWallet
             })
             $WalletMenu.Items.Add($SetCoinJoinAmountItem)
 
@@ -2401,7 +2591,9 @@ foreach ($btnText in $buttons) {
                         }
                     }
                 }
-                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'Set coinjoin rounds' -console $consoleTextBoxWallet
+                Set-ButtonWorking -index 4 -list $buttonListWallet
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -console $consoleTextBoxWallet
+                Reset-Button -index 4 -list $buttonListWallet
             })
             $WalletMenu.Items.Add($SetCoinJoinRoundsItem)
 
@@ -2420,7 +2612,9 @@ foreach ($btnText in $buttons) {
                         }
                     }
                 }
-                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'Set transaction fee' -console $consoleTextBoxWallet
+                Set-ButtonWorking -index 4 -list $buttonListWallet
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -console $consoleTextBoxWallet
+                Reset-Button -index 4 -list $buttonListWallet
             })
             $WalletMenu.Items.Add($SetTxFeeItem)
 
@@ -2442,7 +2636,9 @@ foreach ($btnText in $buttons) {
                         }
                     }
                 }
-                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'Sign message' -console $consoleTextBoxWallet
+                Set-ButtonWorking -index 4 -list $buttonListWallet
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -console $consoleTextBoxWallet
+                Reset-Button -index 4 -list $buttonListWallet
             })
             $WalletMenu.Items.Add($SignMessageItem)
 
@@ -2482,7 +2678,9 @@ foreach ($btnText in $buttons) {
                         }
                     }
                 }
-                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'Sign raw transaction with wallet' -console $consoleTextBoxWallet
+                Set-ButtonWorking -index 4 -list $buttonListWallet
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -console $consoleTextBoxWallet
+                Reset-Button -index 4 -list $buttonListWallet
             })
             $WalletMenu.Items.Add($SignRawTransactionWithWalletItem)
 
@@ -2501,7 +2699,9 @@ foreach ($btnText in $buttons) {
                         }
                     }
                 }
-                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'Unload wallet' -console $consoleTextBoxWallet
+                Set-ButtonWorking -index 4 -list $buttonListWallet
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -console $consoleTextBoxWallet
+                Reset-Button -index 4 -list $buttonListWallet
             })
             $WalletMenu.Items.Add($UnloadWalletItem)
 
@@ -2526,7 +2726,9 @@ foreach ($btnText in $buttons) {
                         }
                     }
                 }
-                Show-CommandParametersForm -command $command -commandParameters $commandParameters -buttonName 'Upgrade to HD' -console $consoleTextBoxWallet
+                Set-ButtonWorking -index 4 -list $buttonListWallet
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -console $consoleTextBoxWallet
+                Reset-Button -index 4 -list $buttonListWallet
             })
             $WalletMenu.Items.Add($UpgradeToHDItem)
 
@@ -2536,25 +2738,24 @@ foreach ($btnText in $buttons) {
             $WalletLockItem.Add_Click({
                 $command = 'walletlock'
                 $commandParameters = @{}
-                Show-CommandForm -command $command -commandParameters $commandParameters -buttonName 'Wallet lock' -console $consoleTextBoxWallet
+                Set-ButtonWorking -index 4 -list $buttonListWallet
+                Show-CommandParametersForm -command $command -commandParameters $commandParameters -console $consoleTextBoxWallet
+                Reset-Button -index 4 -list $buttonListWallet
             })
             $WalletMenu.Items.Add($WalletLockItem)
             
-            
-
-            
-            $WalletMenu.Show($Button, $Button.PointToClient([System.Windows.Forms.Cursor]::Position))
-            $Button.ContextMenuStrip = $WalletMenu
+            $WalletMenu.Show($buttonWallet, $buttonWallet.PointToClient([System.Windows.Forms.Cursor]::Position))
+            $buttonWallet.ContextMenuStrip = $WalletMenu
             })
-
         }
         'Edit RaptoreumCore Config File' {
-            $Button.Add_Click({
-                Execute-Command -command "notepad `"$env:APPDATA\RaptoreumCore\raptoreum.conf`"" -buttonName "Edit RaptoreumCore Config File" -console $consoleTextBoxWallet
+            $buttonWallet.Add_Click({
+                Execute-Command -command "notepad `"$env:APPDATA\RaptoreumCore\raptoreum.conf`""
             })
         }
     }
-    $WalletTab.Controls.Add($Button)
+    $buttonListWallet += $buttonWallet
+    $WalletTab.Controls.Add($buttonWallet)
     $top += 40
 }
 
@@ -2565,75 +2766,97 @@ $top = 10
 $left = 10
 $width = 350
 $height = 40
+$buttonListSmartnode = @()
 foreach ($btnText in $buttons) {
-    $Button = New-Object System.Windows.Forms.Button
-    $Button.Location = New-Object System.Drawing.Point($left, $top)
-    $Button.Size = New-Object System.Drawing.Size($width, $height)
-    $Button.Text = $btnText
-    $Button.FlatStyle = [System.Windows.Forms.FlatStyle]::Standard
-    $Button.BackColor = [System.Drawing.Color]::LightGray
-    $Button.ForeColor = [System.Drawing.Color]::Black
-    $Button.FlatAppearance.BorderSize = 1
-    $Button.FlatAppearance.BorderColor = [System.Drawing.Color]::DarkGray
-    $Button.Margin = New-Object System.Windows.Forms.Padding(0, 0, 0, 10)
-    $Button.Font = New-Object System.Drawing.Font("Consolas", 10)
+    $buttonSmartnode = New-Object System.Windows.Forms.Button
+    $buttonSmartnode.Location = New-Object System.Drawing.Point($left, $top)
+    $buttonSmartnode.Size = New-Object System.Drawing.Size($width, $height)
+    $buttonSmartnode.Text = $btnText
+    $buttonSmartnode.FlatStyle = [System.Windows.Forms.FlatStyle]::Standard
+    $buttonSmartnode.BackColor = [System.Drawing.Color]::LightGray
+    $buttonSmartnode.ForeColor = [System.Drawing.Color]::Black
+    $buttonSmartnode.FlatAppearance.BorderSize = 1
+    $buttonSmartnode.FlatAppearance.BorderColor = [System.Drawing.Color]::DarkGray
+    $buttonSmartnode.Margin = New-Object System.Windows.Forms.Padding(0, 0, 0, 10)
+    $buttonSmartnode.Font = New-Object System.Drawing.Font("Consolas", 10)
     switch ($btnText) {
         'Install Smartnode' {
-            $Button.Add_Click({
+            $buttonSmartnode.Add_Click({
                 $installSmartnodeUrl = "https://raw.githubusercontent.com/wizz13150/Raptoreum_Smartnode/main/SmartNode_Install.bat"
                 $installSmartnodePath = "$env:TEMP\rtm_smartnode_installer.bat"        
                 $wc = New-Object System.Net.WebClient
-                $wc.DownloadFile($installSmartnodeUrl, $installSmartnodePath)        
+                $wc.DownloadFile($installSmartnodeUrl, $installSmartnodePath)   
+                Set-ButtonWorking -index 0 -list $buttonListSmartnode
                 Execute-Command -command "cmd /c $installSmartnodePath"  -background $true -console $consoleTextBoxSmartnode
+                Reset-Button -index 0 -list $buttonListSmartnode
             })
         }        
         'Smartnode Dashboard 9000 Pro Plus' {
-            $Button.Add_Click({
-                Execute-Command -command 'powershell.exe -ExecutionPolicy Bypass -File "%USERPROFILE%\dashboard.ps1"' -buttonName 'Smartnode Dashboard 9000 Pro Plus' -background $true -console $consoleTextBoxSmartnode
+            $buttonSmartnode.Add_Click({
+                Set-ButtonWorking -index 1 -list $buttonListSmartnode
+                Execute-Command -command 'powershell.exe -ExecutionPolicy Bypass -File "%USERPROFILE%\dashboard.ps1"' -background $true -console $consoleTextBoxSmartnode
+                Reset-Button -index 1 -list $buttonListSmartnode
             })
         }        
         'Get blockchain info' {
-            $Button.Add_Click({
-                Execute-WalletCommand -command "getblockchaininfo" -buttonName "Get blockchain info" -console $consoleTextBoxSmartnode
+            $buttonSmartnode.Add_Click({
+                Set-ButtonWorking -index 2 -list $buttonListSmartnode
+                Execute-WalletCommand -command "getblockchaininfo" -console $consoleTextBoxSmartnode
+                Reset-Button -index 2 -list $buttonListSmartnode
             })
         }
         'Smartnode status' {
-            $Button.Add_Click({
-                Execute-SmartnodeCommand -command "status" -buttonName "Smartnode status" -console $consoleTextBoxSmartnode
+            $buttonSmartnode.Add_Click({
+                Set-ButtonWorking -index 3 -list $buttonListSmartnode
+                Execute-SmartnodeCommand -command "status" -console $consoleTextBoxSmartnode
+                Reset-Button -index 3 -list $buttonListSmartnode
             })
         }
         'Start daemon' {
-            $Button.Add_Click({
-                Execute-Command -command "net start $serviceName" -buttonName "Start daemon" -console $consoleTextBoxSmartnode
+            $buttonSmartnode.Add_Click({
+                Set-ButtonWorking -index 4 -list $buttonListSmartnode
+                Execute-Command -command "net start $serviceName" -console $consoleTextBoxSmartnode
+                Reset-Button -index 4 -list $buttonListSmartnode
             })
         }
         'Stop daemon' {
-            $Button.Add_Click({
-                Execute-Command -command "net stop $serviceName" -buttonName "Stop daemon" -console $consoleTextBoxSmartnode
+            $buttonSmartnode.Add_Click({
+                Set-ButtonWorking -index 5 -list $buttonListSmartnode
+                Execute-Command -command "net stop $serviceName" -console $consoleTextBoxSmartnode
+                Reset-Button -index 5 -list $buttonListSmartnode
             })
         }
         'Get daemon status' {
-            $Button.Add_Click({
-                Execute-Command -command "sc query $serviceName" -buttonName "Get daemon status" -console $consoleTextBoxSmartnode
+            $buttonSmartnode.Add_Click({
+                Set-ButtonWorking -index 6 -list $buttonListSmartnode
+                Execute-Command -command "sc query $serviceName" -console $consoleTextBoxSmartnode
+                Reset-Button -index 6 -list $buttonListSmartnode
             })
         }
         'Open a Bash' {
-            $Button.Add_Click({
-                Execute-Command -command "start cmd.exe /k type $env:USERPROFILE\RTM-MOTD.txt" -buttonName 'Open a Bash' -background $true -console $consoleTextBoxSmartnode
+            $buttonSmartnode.Add_Click({
+                Set-ButtonWorking -index 7 -list $buttonListSmartnode
+                Execute-Command -command "start cmd.exe /k type $env:USERPROFILE\RTM-MOTD.txt" -background $true -console $consoleTextBoxSmartnode
+                Reset-Button -index 7 -list $buttonListSmartnode
             })
         }
         'Update Smartnode' {
-            $Button.Add_Click({
-                Execute-Command -command "powershell.exe -ExecutionPolicy Bypass -File $env:USERPROFILE\update.ps1" -buttonName 'Update Smartnode' -background $true -console $consoleTextBoxSmartnode
+            $buttonSmartnode.Add_Click({
+                Set-ButtonWorking -index 8 -list $buttonListSmartnode
+                Execute-Command -command "powershell.exe -ExecutionPolicy Bypass -File $env:USERPROFILE\update.ps1"-background $true -console $consoleTextBoxSmartnode
+                Reset-Button -index 8 -list $buttonListSmartnode
             })
         }
         'Edit Smartnode Config File' {
-            $Button.Add_Click({
-                Execute-Command -command "notepad `"$env:APPDATA\RaptoreumSmartnode\raptoreum.conf`"" -buttonName "Edit Smartnode Config File" -console $consoleTextBoxSmartnode
+            $buttonSmartnode.Add_Click({
+                Set-ButtonWorking -index 9 -list $buttonListSmartnode
+                Execute-Command -command "notepad `"$env:APPDATA\RaptoreumSmartnode\raptoreum.conf`"" -console $consoleTextBoxSmartnode
+                Reset-Button -index 9 -list $buttonListSmartnode
             })
         }
     }
-    $SmartnodeTab.Controls.Add($Button)
+    $buttonListSmartnode += $buttonSmartnode
+    $SmartnodeTab.Controls.Add($buttonSmartnode)
     $top += 40
 }
 
@@ -2644,21 +2867,23 @@ $top = 10
 $left = 10
 $width = 350
 $height = 40
+$buttonListMiner = @()
 foreach ($btnText in $buttons) {
-    $Button = New-Object System.Windows.Forms.Button
-    $Button.Location = New-Object System.Drawing.Point($left, $top)
-    $Button.Size = New-Object System.Drawing.Size($width, $height)
-    $Button.Text = $btnText
-    $Button.FlatStyle = [System.Windows.Forms.FlatStyle]::Standard
-    $Button.BackColor = [System.Drawing.Color]::LightGray
-    $Button.ForeColor = [System.Drawing.Color]::Black
-    $Button.FlatAppearance.BorderSize = 1
-    $Button.FlatAppearance.BorderColor = [System.Drawing.Color]::DarkGray
-    $Button.Margin = New-Object System.Windows.Forms.Padding(0, 0, 0, 10)
-    $Button.Font = New-Object System.Drawing.Font("Consolas", 10)
+    $buttonMiner = New-Object System.Windows.Forms.Button
+    $buttonMiner.Location = New-Object System.Drawing.Point($left, $top)
+    $buttonMiner.Size = New-Object System.Drawing.Size($width, $height)
+    $buttonMiner.Text = $btnText
+    $buttonMiner.FlatStyle = [System.Windows.Forms.FlatStyle]::Standard
+    $buttonMiner.BackColor = [System.Drawing.Color]::LightGray
+    $buttonMiner.ForeColor = [System.Drawing.Color]::Black
+    $buttonMiner.FlatAppearance.BorderSize = 1
+    $buttonMiner.FlatAppearance.BorderColor = [System.Drawing.Color]::DarkGray
+    $buttonMiner.Margin = New-Object System.Windows.Forms.Padding(0, 0, 0, 10)
+    $buttonMiner.Font = New-Object System.Drawing.Font("Consolas", 10)
     switch ($btnText) {
         'Download RaptorWings' {
-            $Button.Add_Click({
+            $buttonMiner.Add_Click({
+                Set-ButtonWorking -index 0 -list $buttonListMiner
                 $tempDir = [System.IO.Path]::GetTempPath()
                 $raptorwingsZip = "$tempDir" + "raptorwings.zip"
                 $raptorwingsFolder = "$tempDir" + "raptorwings"
@@ -2679,10 +2904,12 @@ foreach ($btnText in $buttons) {
                 catch {
                     [System.Windows.Forms.MessageBox]::Show("An error occurred while downloading or extracting RaptorWings.`r`nError message: $($Error[0].Exception.Message)", "Download RaptorWings", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
                 }
+                Reset-Button -index 0 -list $buttonListMiner
             })
         }
         'Download XMRig' {
-            $Button.Add_Click({
+            $buttonMiner.Add_Click({
+                Set-ButtonWorking -index 1 -list $buttonListMiner
                 $tempDir = [System.IO.Path]::GetTempPath()
                 $xmrigZip = "$tempDir" + "xmrig.zip"
                 $xmrigFolder = "$tempDir" + "xmrig"
@@ -2702,10 +2929,12 @@ foreach ($btnText in $buttons) {
                 catch {
                     [System.Windows.Forms.MessageBox]::Show("An error occurred while downloading or extracting XMRig.`r`nError message: $($Error[0].Exception.Message)", "Download XMRig", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
                 }
+                Reset-Button -index 1 -list $buttonListMiner
             })
         }
         'Download CPuminer' {
-            $Button.Add_Click({
+            $buttonMiner.Add_Click({
+                Set-ButtonWorking -index 2 -list $buttonListMiner
                 $tempDir = [System.IO.Path]::GetTempPath()
                 $cpuminerZip = "$tempDir" + "cpuminer.zip"
                 $cpuminerFolder = "$tempDir" + "cpuminer"
@@ -2742,17 +2971,18 @@ foreach ($btnText in $buttons) {
                 catch {
                     [System.Windows.Forms.MessageBox]::Show("An error occurred while downloading or extracting CPUMiner.`r`nError message: $($Error[0].Exception.Message)", "CPUMiner Download", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
                 }
+                Reset-Button -index 2 -list $buttonListMiner
             })
         }
         'Launch RaptorWings' {
-            $Button.Add_Click({
+            $buttonMiner.Add_Click({
                 $tempDir = [System.IO.Path]::GetTempPath()
                 $raptorwingsExePath = "$tempDir" + "raptorwings\RaptorWings.exe"
                 Start-Process $raptorwingsExePath -WindowStyle Normal
             })
         }
         'Launch XMRig' {
-            $Button.Add_Click({
+            $buttonMiner.Add_Click({
                 SaveFormData
                 $tempDir = [System.IO.Path]::GetTempPath()
                 $uri = "https://api.github.com/repos/xmrig/xmrig/releases/latest"
@@ -2772,7 +3002,7 @@ foreach ($btnText in $buttons) {
             })
         }
         'Launch CPuminer' {
-            $Button.Add_Click({
+            $buttonMiner.Add_Click({
                 SaveFormData
                 $tempDir = [System.IO.Path]::GetTempPath()
                 $uri = "https://api.github.com/repos/WyvernTKC/cpuminer-gr-avx2/releases/latest"
@@ -2800,7 +3030,8 @@ foreach ($btnText in $buttons) {
             })
         }
     }
-    $MinerTab.Controls.Add($Button)
+    $buttonListMiner += $buttonMiner
+    $MinerTab.Controls.Add($buttonMiner)
     $top += 40
 }
 
@@ -2889,7 +3120,6 @@ $top = 10
 $left = 10
 $width = 350
 $height = 40
-
 foreach ($btnText in $buttons) {
     $Button = New-Object System.Windows.Forms.Button
     $Button.Location = New-Object System.Drawing.Point($left, $top)
@@ -2906,30 +3136,31 @@ foreach ($btnText in $buttons) {
     switch ($btnText) {
         'Raptoreum Website' {
             $Button.Add_Click({
-                Execute-Command -command "start https://raptoreum.com" -buttonName "Raptoreum Website"
+                Execute-Command -command "start https://raptoreum.com"
             })
         }
         'Raptoreum Documentation' {
             $Button.Add_Click({
-                Execute-Command -command "start https://docs.raptoreum.com" -buttonName "Raptoreum Documentation"
+                Execute-Command -command "start https://docs.raptoreum.com"
             })
         }
         'Raptoreum on Twitter' {
             $Button.Add_Click({
-                Execute-Command -command "start https://twitter.com/Raptoreum" -buttonName "Raptoreum on Twitter"
+                Execute-Command -command "start https://twitter.com/Raptoreum"
             })
         }
         'Raptoreum Discord' {
             $Button.Add_Click({
-                Execute-Command -command "start https://discord.gg/RKefY9C" -buttonName "Raptoreum Discord"
+                Execute-Command -command "start https://discord.gg/RKefY9C"
             })
         }
         'Raptoreum on Reddit' {
             $Button.Add_Click({
-                Execute-Command -command "start https://www.reddit.com/r/raptoreum/" -buttonName "Raptoreum on Reddit"
+                Execute-Command -command "start https://www.reddit.com/r/raptoreum/"
             })
         }
     }
+    $buttonList += $localButton
     $HelpTab.Controls.Add($Button)
     $top += 40
 }
