@@ -19,14 +19,10 @@ function Execute-Command {
     param($command, $background = $false, $console, $admin = $false, $hidden = "Normal")
 
     if ($background) {
-        $job = Start-Job -ScriptBlock {
-            param ($command)
-            Start-Process -FilePath "cmd.exe" -ArgumentList "/c $command"
-        } -ArgumentList $command
-        $job | Wait-Job
+        Start-Process -FilePath "cmd.exe" -ArgumentList "/c $command" -WindowStyle $hidden
         $console.Clear()
         $timestamp = Get-Date -Format "HH:mm:ss"
-        $console.AppendText("[$timestamp] > $command (Executed in a new CMD window)")
+        $console.AppendText("[$timestamp] > $buttonName (Executed in a new CMD window) ")
     } else {
         if ($admin) {
             $process = Start-Process -FilePath "cmd.exe" -ArgumentList "/c $command" -WindowStyle $hidden -PassThru -Verb RunAs
@@ -2736,7 +2732,7 @@ foreach ($btnText in $buttons) {
             $buttonWallet.Add_Click({
                 Set-ButtonWorking -index 4 -list $buttonListWallet
                 if ($checkBox2.Checked -eq $true) {$rtmconf = "nodetest\raptoreum_testnet.conf"} else {$rtmconf = "raptoreum.conf"}
-                Execute-Command -command "notepad `"$global:raptoreumFolder\$rtmconf`"" -console $consoleTextBoxWallet -background $true
+                Execute-Command -command "notepad `"$global:raptoreumFolder\$rtmconf`"" -console $consoleTextBoxWallet -background $true -hidden "Hidden"
                 Reset-Button -index 4 -list $buttonListWallet
             })
         }
@@ -2774,14 +2770,18 @@ foreach ($btnText in $buttons) {
                 $wc = New-Object System.Net.WebClient
                 $wc.DownloadFile($installSmartnodeUrl, $installSmartnodePath)   
                 Set-ButtonWorking -index 0 -list $buttonListSmartnode
-                Execute-Command -command "cmd /c $installSmartnodePath" -background $true -console $consoleTextBoxSmartnode -hidden "Hidden"
+                Execute-Command -command "$installSmartnodePath" -background $true -console $consoleTextBoxSmartnode -hidden "Normal"
                 Reset-Button -index 0 -list $buttonListSmartnode
             })
         }        
         'Smartnode Dashboard 9000 Pro Plus' {
             $buttonSmartnode.Add_Click({
                 Set-ButtonWorking -index 1 -list $buttonListSmartnode
-                Execute-Command -command 'powershell.exe -ExecutionPolicy Bypass -File "%USERPROFILE%\dashboard.ps1"' -background $true -console $consoleTextBoxSmartnode
+                if ($checkBox1.Checked -eq $true) {$dashboard = "dashboard_testnet.ps1"
+                    Execute-Command -command 'powershell.exe -ExecutionPolicy Bypass -File "%USERPROFILE%\dashboard_testnet.ps1"' -console $consoleTextBoxSmartnode -background $true -hidden "Normal"
+                } else {
+                    Execute-Command -command 'powershell.exe -ExecutionPolicy Bypass -File "%USERPROFILE%\dashboard.ps1"' -console $consoleTextBoxSmartnode -background $true -hidden "Normal"
+                }
                 Reset-Button -index 1 -list $buttonListSmartnode
             })
         }        
