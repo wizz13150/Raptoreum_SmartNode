@@ -2777,7 +2777,7 @@ foreach ($btnText in $buttons) {
         'Smartnode Dashboard 9000 Pro Plus' {
             $buttonSmartnode.Add_Click({
                 Set-ButtonWorking -index 1 -list $buttonListSmartnode
-                if ($checkBox1.Checked -eq $true) {$dashboard = "dashboard_testnet.ps1"
+                if ($checkBox1.Checked -eq $true) {
                     Execute-Command -command 'powershell.exe -ExecutionPolicy Bypass -File "%USERPROFILE%\dashboard_testnet.ps1"' -console $consoleTextBoxSmartnode -background $true -hidden "Normal"
                 } else {
                     Execute-Command -command 'powershell.exe -ExecutionPolicy Bypass -File "%USERPROFILE%\dashboard.ps1"' -console $consoleTextBoxSmartnode -background $true -hidden "Normal"
