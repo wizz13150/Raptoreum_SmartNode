@@ -8,9 +8,9 @@ Not finished yet.<br><br>
 
 Screenshots :
 
-![image](https://github.com/wizz13150/Raptoreum_SmartNode/assets/22177081/c2484686-4363-4ac7-b12f-6f1d089ed809)
+![image](https://github.com/wizz13150/Raptoreum_SmartNode/assets/22177081/ac9a16ec-fa31-4356-be52-57a945396227)
 
-![image](https://github.com/wizz13150/Raptoreum_SmartNode/assets/22177081/e3531272-1b0e-4fc3-83c7-386712bb0b2a)
+![image](https://github.com/wizz13150/Raptoreum_SmartNode/assets/22177081/d00f441c-8f64-4a6a-8cb8-c80c90d2bca7)
 
 ![image](https://github.com/wizz13150/Raptoreum_SmartNode/assets/22177081/9f3762e6-cc15-4027-9934-7a77d0a3b3d4)
 
