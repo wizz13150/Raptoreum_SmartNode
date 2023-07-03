@@ -4,7 +4,7 @@ NOT OFFICIAL, NOT RELATED TO THE RAPTOREUM CORE TEAM
 
 Simple Toolkit to manage easily a Raptoreum Wallet, Smartnode, Miner, Launch RaptorWings, Links ...
 
-Not finished yet.<br><br>
+Not finished yet. (mainly the Wallet tab)<br><br>
 
 Screenshots :
 
