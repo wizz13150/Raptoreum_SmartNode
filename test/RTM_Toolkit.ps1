@@ -373,11 +373,11 @@ $TabControl.Size = New-Object System.Drawing.Size(935, 440)
 $Form.Controls.Add($TabControl)
 
 $GeneralTab = New-Object System.Windows.Forms.TabPage
-$GeneralTab.Text = "General (todo)"
+$GeneralTab.Text = "General"
 $TabControl.Controls.Add($GeneralTab)
 
 $WalletTab = New-Object System.Windows.Forms.TabPage
-$WalletTab.Text = "Wallet (todo)"
+$WalletTab.Text = "Wallet"
 $TabControl.Controls.Add($WalletTab)
 
 $SmartnodeTab = New-Object System.Windows.Forms.TabPage
