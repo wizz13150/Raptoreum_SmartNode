@@ -8,12 +8,21 @@ Not finished yet.<br><br>
 
 Screenshots :
 
-![image](https://user-images.githubusercontent.com/22177081/230991165-cbc6dfcb-5930-4239-938e-86c37fa6c5b5.png)
+![image](https://github.com/wizz13150/Raptoreum_SmartNode/assets/22177081/c2484686-4363-4ac7-b12f-6f1d089ed809)
+
+![image](https://github.com/wizz13150/Raptoreum_SmartNode/assets/22177081/e3531272-1b0e-4fc3-83c7-386712bb0b2a)
+
+![image](https://github.com/wizz13150/Raptoreum_SmartNode/assets/22177081/9f3762e6-cc15-4027-9934-7a77d0a3b3d4)
+
+![image](https://github.com/wizz13150/Raptoreum_SmartNode/assets/22177081/81ac96fc-b42d-4573-a73a-49714224ecb9)
+
+![image](https://github.com/wizz13150/Raptoreum_SmartNode/assets/22177081/a8acbba0-2d18-4c97-b641-257b3391f0cf)
 
 
-![image](https://user-images.githubusercontent.com/22177081/230991268-04afa19c-5c24-4959-a420-6888c263faca.png)
 
 
-![image](https://user-images.githubusercontent.com/22177081/230991516-a4a262b1-c67d-41c4-a213-046a4a155ab1.png)
+
+
+
 
 
