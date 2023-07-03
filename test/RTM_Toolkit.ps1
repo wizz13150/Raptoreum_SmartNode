@@ -1,34 +1,53 @@
+#################################################
+############# RAPTOREUM Windows Tools ###########
+##################### V 1.0 #####################
+#################################################
+
+
 Add-Type -AssemblyName System.Windows.Forms
 
 # Vars
 $smartnodecli = $env:raptoreumcli
-$raptoreumcli = "E:\Raptoreum\Wallet1.3.17.02\raptoreum-cli.exe -conf=E:\Raptoreum\Wallet\raptoreum.conf -testnet"
-$serviceName = "RTMService"
-$executablePath = "E:\Raptoreum\Wallet1.3.17.02\raptoreum-qt.exe"
+$raptoreumcli = "H:\Raptoreum\Wallet1.3.17.04\raptoreum-cli.exe -conf=H:\Raptoreum\Wallet\raptoreum.conf -testnet"
+$global:serviceName = "RTMService"
+$executablePath = "H:\Raptoreum\Wallet1.3.17.04\raptoreum-qt.exe"
 if ($raptoreumcli -match "-testnet") {$port = "10229";$collateral="60000"} else {$port = "10226";$collateral="1800000"}
 
 # Functions
 function Execute-Command {
-    param($command, $buttonName, $background, $console)
-    
+    param($command, $background = $false, $console, $admin = $false)
+
     if ($background) {
-        Start-Process -FilePath "cmd.exe" -ArgumentList "/c $command" -WindowStyle Normal
+        $job = Start-Job -ScriptBlock {
+            param ($command)
+            Start-Process -FilePath "cmd.exe" -ArgumentList "/c $command" -WindowStyle Normal
+        } -ArgumentList $command
+        $job | Wait-Job
         $console.Clear()
         $timestamp = Get-Date -Format "HH:mm:ss"
-        $console.AppendText("[$timestamp] > $buttonName (Executed in a new CMD window) ")
+        $console.AppendText("[$timestamp] > $command (Executed in a new CMD window)")
     } else {
-        $output = cmd /C $command 2>&1
-        $console.Clear()
-        $timestamp = Get-Date -Format "HH:mm:ss"
-        $console.AppendText("[$timestamp] > $command  `n")
-        $console.AppendText(($output | Out-String))
+        if ($admin) {
+            $process = Start-Process -FilePath "cmd.exe" -ArgumentList "/c $command" -WindowStyle Normal -PassThru -Verb RunAs
+            $process.WaitForExit()
+        } else {
+            $output = cmd /C $command 2>&1
+            $console.Clear()
+            $timestamp = Get-Date -Format "HH:mm:ss"
+            $console.AppendText("[$timestamp] > $command`n")
+            $console.AppendText(($output | Out-String))
+        }
     }
 }
 
 function Execute-WalletCommand {
-    param($command, $buttonName, $console, $parameters)
+    param($command, $console, $parameters)
 
-    $output = cmd /C "$raptoreumcli $command $parameters" 2>&1
+    $job = Start-Job -ScriptBlock {
+        param ($command, $parameters, $raptoreumcli)
+        cmd /C "$raptoreumcli $command $parameters" 2>&1
+    } -ArgumentList $command, $parameters, $raptoreumcli
+    $output = $job | Wait-Job | Receive-Job
     $console.Clear()
     $timestamp = Get-Date -Format "HH:mm:ss"
     $console.AppendText("[$timestamp] > $command $parameters `n")
@@ -36,18 +55,21 @@ function Execute-WalletCommand {
 }
 
 function Print-Command {
-    param($command, $buttonName, $console, $parameters)
+    param($command, $console, $parameters)
 
     $console.Clear()
     $timestamp = Get-Date -Format "HH:mm:ss"
     $console.AppendText("[$timestamp] > $command $parameters `n")
 }
 
-
 function Execute-SmartnodeCommand {
-    param($command, $buttonName, $console)
+    param($command, $console, $parameters)
 
-    $output = cmd /C "$smartnodecli smartnode $command" 2>&1
+    $job = Start-Job -ScriptBlock {
+        param ($command, $smartnodecli)
+        cmd /C "$smartnodecli $command" 2>&1
+    } -ArgumentList $command, $smartnodecli
+    $output = $job | Wait-Job | Receive-Job
     $console.Clear()
     $timestamp = Get-Date -Format "HH:mm:ss"
     $console.AppendText("[$timestamp] > smartnode $command  `n")
@@ -55,45 +77,86 @@ function Execute-SmartnodeCommand {
 }
 
 function SaveFormData {
-    $config = @{
-        Pool     = $PoolTextBox.Text
-        User     = $UserTextBox.Text
-        Pass     = $PassTextBox.Text
-        Threads = $ThreadsTrackBar.Value
-    }
-    $json = ConvertTo-Json $config
-    Set-Content -Path "configminers.json" -Value $json
+    $checkedGPUs = ($MinerTab.Controls | Where-Object { $_ -is [System.Windows.Forms.CheckBox] -and $_.Checked } | ForEach-Object { $_.Text.Split(" ")[0].Replace("GPU", "").Replace(":", "") }) -join ","
+    $textBox1TextEscaped = $textBox1.Text.Replace('\', '\\')
+    $json = @"
+{
+    "Pool": "$($PoolTextBox.Text)",
+    "User": "$($UserTextBox.Text)",
+    "Pass": "$($PassTextBox.Text)",
+    "Threads": $($ThreadsTrackBar.Value),
+    "Platforms": "$($OpenCLPlatformsComboBox.SelectedItem)",
+    "OpenCLThreads": "$($OpenCLThreadsTextBox.Text)",
+    "CheckedGPUs": "$checkedGPUs",
+    "CheckBox1": "$($checkBox1.Checked.ToString().ToLower())",
+    "CheckBox2": "$($checkBox2.Checked.ToString().ToLower())",
+    "TextBox1": "$textBox1TextEscaped"
+}
+"@
+    Set-Content -Path ".\config.json" -Value $json -Force
 }
 
 function LoadFormData {
-    if (Test-Path "configminers.json") {
-        $json = Get-Content -Path "configminers.json" -Raw
+    if (Test-Path ".\config.json") {
+        $json = Get-Content -Path ".\config.json" -Raw
         $config = ConvertFrom-Json $json
         $PoolTextBox.Text = $config.Pool
         $UserTextBox.Text = $config.User
         $PassTextBox.Text = $config.Pass
-        $ThreadsTrackBar.Value = $config.threads
+        $ThreadsTrackBar.Value = $config.Threads
         $SelectedThreadsLabel.Text = $config.Threads
+        $OpenCLPlatformsComboBox.SelectedItem = $config.Platforms
+        $OpenCLThreadsTextBox.Text = $config.OpenCLThreads        
+        $checkedGPUs = $config.CheckedGPUs -split ","
+        foreach ($checkBox in $checkBoxes) {
+            $gpuIndex = $checkBox.Text.Split(" ")[0].Replace("GPU", "").Replace(":", "")
+            if ($gpuIndex -in $checkedGPUs) {
+                $checkBox.Checked = $true
+            } else {$checkBox.Checked = $false}
+        }
+        if ($config.CheckBox1 -eq "true") {
+            $checkBox1.Checked = $true
+        } else {$checkBox1.Checked = $false}
+        if ($config.CheckBox2 -eq "true") {
+            $checkBox2.Checked = $true
+        } else {$checkBox2.Checked = $false}
+        $textBox1.Text = $config.TextBox1
     } else {
         $PoolTextBox.Text = "stratum+tcp://eu.flockpool.com:4444"
         $UserTextBox.Text = "RMRwCAkSJaWHGPiP1rF5EHuUYDTze2xw6J.wizz"
         $PassTextBox.Text = "tototo"
         $ThreadsTrackBar.Value = "4"
         $SelectedThreadsLabel.Text = "4"
+        $OpenCLPlatformsComboBox.SelectedItem = 'all'
+        $OpenCLThreadsTextBox.Text = "auto"
+        $checkBox1.Checked = $false
+        $checkBox2.Checked = $false
+        $textBox1.Text = ""
     }
+}
+
+function Set-ButtonWorking {
+    param($index, $list)
+    $global:oldText = $list[$index].Text
+    $list[$index].Text = "Working..."
+}
+
+function Reset-Button {
+    param($index, $list)
+    $list[$index].Text = $global:oldText
 }
 
 function Show-CommandParametersForm {
     param(
-        [string]$command,
+        [string]$command, 
         [hashtable]$commandParameters,
         [System.Windows.Forms.TextBox]$console
     )
-
+    $parameterValues = @{}
     if ($commandParameters.ContainsKey($command)) {
         $parameters = $commandParameters[$command]
         $requiredParameters = $parameters['required']
-        $optionalParameters = $parameters['optional']
+        $optionalParameters = $parameters['optional']        
         $types = $parameters['types']
         $totalParameters = $requiredParameters.Count + $optionalParameters.Count
         $form = New-Object System.Windows.Forms.Form
@@ -110,45 +173,90 @@ function Show-CommandParametersForm {
             $form.Controls.Add($messageLabel)
             $y += 30
         }
-        foreach ($paramName in $requiredParameters + $optionalParameters) {
+        $x = 0
+        for ($i = 0; $i -lt $requiredParameters.Count; $i++) {
+            $paramName = $requiredParameters[$i]
             $currentType = $types[$paramName]
             $label = New-Object System.Windows.Forms.Label
             $label.Location = New-Object System.Drawing.Point(10, $y)
             $label.Size = New-Object System.Drawing.Size(280, 20)
             if ($currentType.type.ToLower() -eq 'boolean') {
-                $requiredText = if ($requiredParameters.Contains($paramName)) { '(Required, ' + $currentType.type + ', Default:' + $currentType.defaultValue + ')' } else { '(Optional, ' + $currentType.type + ', Default: ' + $currentType.defaultValue + ')' }
-                $label.Text = $paramName + ' ' + $requiredText + ':'
+                $label.Text = $paramName + ' (Required, ' + $currentType.type + ', Default:' + $currentType.defaultValue + '):'
             } else {
-                $requiredText = if ($requiredParameters.Contains($paramName)) { '(Required, ' + $currentType.type + ')' } else { '(Optional, ' + $currentType.type + ')' }
-                $label.Text = $paramName + ' ' + $requiredText + ':'
+                $label.Text = $paramName + ' (Required, ' + $currentType.type + '):'
             }
             $form.Controls.Add($label)
             $y += 20
-            if ($currentType -is [hashtable] -and $currentType.type.ToLower() -eq 'boolean') {
+            if ($currentType.type.ToLower() -eq 'boolean') {
                 $comboBox = New-Object System.Windows.Forms.ComboBox
                 $comboBox.Location = New-Object System.Drawing.Point(10, $y)
                 $comboBox.Size = New-Object System.Drawing.Size(280, 20)
                 $comboBox.DropDownStyle = [System.Windows.Forms.ComboBoxStyle]::DropDownList
                 $comboBox.Items.AddRange(@('true', 'false'))
                 $comboBox.SelectedItem = $currentType.defaultValue
+                if ($currentType.defaultValue) {
+                    $parameterValues[$paramName] = $currentType.defaultValue
+                }
                 $form.Controls.Add($comboBox)
-            <#} elseif ($currentType.type.ToLower() -eq 'choices') {
-                $comboBox = New-Object System.Windows.Forms.ComboBox
-                $comboBox.Location = New-Object System.Drawing.Point(10, $y)
-                $comboBox.Size = New-Object System.Drawing.Size(280, 20)
-                $comboBox.DropDownStyle = [System.Windows.Forms.ComboBoxStyle]::DropDownList
-                $comboBox.Items.AddRange($currentType.choices)
-                $form.Controls.Add($comboBox)#>
+                if ($currentType.defaultValue) {
+                    $parameterValues[$paramName] = $currentType.defaultValue
+                }
             } else {
                 $textBox = New-Object System.Windows.Forms.TextBox
                 $textBox.Location = New-Object System.Drawing.Point(10, $y)
                 $textBox.Size = New-Object System.Drawing.Size(280, 20)
-                $textBox.Text = $currentType.defaultValue
                 $form.Controls.Add($textBox)
+                $textBox.Tag = $paramName
+                $textBox.Text = $types[$paramName].defaultValue
+                $textBox.Add_TextChanged({
+                    $textBoxParamName = $this.Tag
+                    Write-Host "Textbox TextChanged for $textBoxParamName"
+                    $parameterValues[$textBoxParamName] = $this.Text
+                })
+                $x++
             }
             $y += 30
         }
-        
+        for ($i = 0; $i -lt $optionalParameters.Count; $i++) {
+            $paramName = $optionalParameters[$i]
+            $currentType = $types[$paramName]
+            $label = New-Object System.Windows.Forms.Label
+            $label.Location = New-Object System.Drawing.Point(10, $y)
+            $label.Size = New-Object System.Drawing.Size(280, 20)
+            if ($currentType.type.ToLower() -eq 'boolean') {
+                $label.Text = $paramName + ' (Optional, ' + $currentType.type + ', Default:' + $currentType.defaultValue + '):'
+            } else {
+                $label.Text = $paramName + ' (Optional, ' + $currentType.type + '):'
+            }
+            $form.Controls.Add($label)
+            $y += 20
+            if ($currentType.type.ToLower() -eq 'boolean') {
+                $comboBox = New-Object System.Windows.Forms.ComboBox
+                $comboBox.Location = New-Object System.Drawing.Point(10, $y)
+                $comboBox.Size = New-Object System.Drawing.Size(280, 20)
+                $comboBox.DropDownStyle = [System.Windows.Forms.ComboBoxStyle]::DropDownList
+                $comboBox.Items.AddRange(@('true', 'false'))
+                $comboBox.SelectedItem = $currentType.defaultValue
+                if ($currentType.defaultValue) {
+                    $parameterValues[$paramName] = $currentType.defaultValue
+                }
+                $form.Controls.Add($comboBox)
+            } else {
+                $textBox = New-Object System.Windows.Forms.TextBox
+                $textBox.Location = New-Object System.Drawing.Point(10, $y)
+                $textBox.Size = New-Object System.Drawing.Size(280, 20)
+                $form.Controls.Add($textBox)
+                $textBox.Tag = $paramName 
+                $textBox.Text = $types[$paramName].defaultValue
+                $textBox.Add_TextChanged({
+                    $textBoxParamName = $this.Tag
+                    Write-Host "Textbox TextChanged for $textBoxParamName"
+                    $parameterValues[$textBoxParamName] = $this.Text
+                })
+                $x++
+            }
+            $y += 30
+        }
         if ($requiredParameters.Count -eq 0) {
             $baseHeight = 180
         } else {
@@ -203,43 +311,40 @@ function Show-CommandParametersForm {
         $form.CancelButton = $cancelButton
         
         $formResult = $form.ShowDialog()
-
-        if ($formResult -eq [System.Windows.Forms.DialogResult]::OK -or !$formResult) {
-            $allValues = @()
-            $allParameters = @($requiredParameters + $optionalParameters)        
-            for ($i = 0; $i -lt $allParameters.Count; $i++) {
-                $controlType = if ($types[$allParameters[$i]].type.ToLower() -eq 'boolean') { [System.Windows.Forms.ComboBox] } else { [System.Windows.Forms.TextBox] }
-                $control = $form.Controls | Where-Object { $_.GetType() -eq $controlType -and $_.Location.Y -eq (($_.Location.Y - 20) / 30) * 30 + 20 }
-                $value = if ($controlType -eq [System.Windows.Forms.ComboBox]) { $control[$i].SelectedItem.ToString() } else { $control[$i].Text }
-                $allValues += $value
-            }        
-            $requiredValues = $allValues[0..($requiredParameters.Count - 1)]
-            $optionalValues = $allValues[$requiredParameters.Count..($allValues.Count - 1)]
-            $parameters = $requiredValues + $optionalValues        
-            if ($requiredValues.Count -eq 0) {
-                if ($printWithoutRunningCheckbox.Checked) {
-                    Print-Command -command $command -console $consoleTextBoxWallet
-                } else {
-                    Execute-WalletCommand -command $command -buttonName $command -console $consoleTextBoxWallet
-                }
+        
+        if ($formResult  -eq [System.Windows.Forms.DialogResult]::OK -or !$formResult ) {
+            $values = @()
+            foreach ($paramName in ($requiredParameters + $optionalParameters)) {
+                #if ($paramName) {
+                $values += '"' + $parameterValues[$paramName] + '"'
+                #} else {
+                    #$values += '""'
+                #}
+            }                        
+            $commandString = "$command " + ($values -join ' ')
+            if ($printWithoutRunningCheckbox.Checked) {
+                Print-Command -command $commandString -console $consoleTextBoxWallet
             } else {
-                $commandString = $command
-                for ($i = 0; $i -lt $allParameters.Count; $i++) {
-                    $param = $allParameters[$i]
-                    $paramValue = $parameters[$i]
-                    if ($types[$param]['quotes']) {
-                        $commandString += " `"$paramValue`""
-                    } else {
-                        $commandString += " $paramValue"
-                    }
-                }        
-                if ($printWithoutRunningCheckbox.Checked) {
-                    Print-Command -command $commandString -console $consoleTextBoxWallet
-                } else {
-                    Execute-WalletCommand -command $commandString -buttonName $command -console $consoleTextBoxWallet
-                }
-            }
+                Execute-WalletCommand -command $commandString -buttonName $command -console $consoleTextBoxWallet
+            }            
         }        
+    }
+}
+
+function Update-RaptoreumCli {
+    # Start with clean base cli command
+    $raptoreumcli = "`"$($TextBox1.Text)`""
+    
+    # Add -conf option only if it's not already present
+    if ($raptoreumcli -notlike "*-conf=*") {
+        $raptoreumcli += "-conf=H:\Raptoreum\Wallet\raptoreum.conf"
+    }
+    
+    # Add testnet option only if checkbox2 is checked and it's not already present
+    if ($checkBox2.Checked -and $raptoreumcli -notlike "*-testnet") {
+        $raptoreumcli += " -testnet"
+    } elseif ($raptoreumcli -like "*-testnet") {
+        $raptoreumcli = $raptoreumcli -replace " -testnet", ""
     }
 }
 
@@ -297,43 +402,90 @@ $consoleTextBoxWallet.ForeColor = [System.Drawing.Color]::Green
 $consoleTextBoxWallet.Font = New-Object System.Drawing.Font("Consolas", 9)
 $WalletTab.Controls.Add($consoleTextBoxWallet)
 
-# General buttons
-$buttons = @("Button 1", "Button 2")
-$top = 10
-$left = 10
-$width = 350
-$height = 40
-foreach ($btnText in $buttons) {
-    $Button = New-Object System.Windows.Forms.Button
-    $Button.Location = New-Object System.Drawing.Point($left, $top)
-    $Button.Size = New-Object System.Drawing.Size($width, $height)
-    $Button.Text = $btnText
-    $Button.FlatStyle = [System.Windows.Forms.FlatStyle]::Standard
-    $Button.BackColor = [System.Drawing.Color]::LightGray
-    $Button.ForeColor = [System.Drawing.Color]::Black
-    $Button.FlatAppearance.BorderSize = 1
-    $Button.FlatAppearance.BorderColor = [System.Drawing.Color]::DarkGray
-    $Button.Margin = New-Object System.Windows.Forms.Padding(0, 0, 0, 10)
-    $Button.Font = New-Object System.Drawing.Font("Consolas", 10)
-    switch ($btnText) {
-        'Get blockchain info' {
-            $Button.Add_Click({
-                Execute-WalletCommand -command "getblockchaininfo" -buttonName "Get blockchain info"
-            })
-        }
-        'Smartnode status' {
-            $Button.Add_Click({
-                Execute-SmartnodeCommand -command "status" -buttonName "Smartnode status"
-            })
+
+# General tab
+$label1 = New-Object System.Windows.Forms.Label
+$label1.Location = New-Object System.Drawing.Point(10, 10)
+$label1.Size = New-Object System.Drawing.Size(300, 20)
+$label1.Text = "Run in Testnet mode"
+
+$checkBox1 = New-Object System.Windows.Forms.CheckBox
+$checkBox1.Location = New-Object System.Drawing.Point(10, 30)
+$checkBox1.Size = New-Object System.Drawing.Size(300, 20)
+$checkBox1.Text = "My Smartnode is running in Testnet mode"
+
+$checkBox2 = New-Object System.Windows.Forms.CheckBox
+$checkBox2.Location = New-Object System.Drawing.Point(10, 60)
+$checkBox2.Size = New-Object System.Drawing.Size(300, 20)
+$checkBox2.Text = "My RaptoreumCore is running in Testnet mode"
+
+$label2 = New-Object System.Windows.Forms.Label
+$label2.Location = New-Object System.Drawing.Point(10, 100)
+$label2.Size = New-Object System.Drawing.Size(300, 30)
+$label2.Text = "Select a custom conf file to use for RaptoreumCore`n(not for the Smartnode) :"
+
+$textBox1 = New-Object System.Windows.Forms.TextBox
+$textBox1.Location = New-Object System.Drawing.Point(10, 130)
+$textBox1.Size = New-Object System.Drawing.Size(260, 20)
+$textBox1.add_TextChanged({
+    SaveFormData
+})
+
+$button1 = New-Object System.Windows.Forms.Button
+$button1.Location = New-Object System.Drawing.Point(280, 130)
+$button1.Size = New-Object System.Drawing.Size(75, 23)
+$button1.Text = "Browse..."
+
+# Checkbox click events
+$checkBox1.Add_Click({
+    SaveFormData
+    if ($checkBox1.Checked) {
+        $smartnodecli = $env:traptoreumcli
+        $global:serviceName = "RTMServiceTestnet"
+    } else {
+        $smartnodecli = $env:raptoreumcli
+        $global:serviceName = "RTMService"
+    }
+})
+
+$checkBox2.Add_Click({
+    SaveFormData
+    if ($checkBox2.Checked) {
+        $raptoreumcli = $raptoreumcli + " -testnet"
+    } else {
+        if ($raptoreumcli -like "* -testnet") {
+            $raptoreumcli = $raptoreumcli -replace " -testnet", ""
         }
     }
-    $GeneralTab.Controls.Add($Button)
-    $top += 40
-}
+})
+
+# Button click event to open file dialog
+$button1.Add_Click({    
+    $openFileDialog = New-Object System.Windows.Forms.OpenFileDialog
+    $openFileDialog.InitialDirectory = $env:USERPROFILE
+    $openFileDialog.Filter = "All files (*.*)|*.*"
+    if ($openFileDialog.ShowDialog() -eq "OK") {
+        $textBox1.Text = $openFileDialog.FileName
+        $raptoreumcli = "`"$($TextBox.Text)`" -conf=H:\Raptoreum\Wallet\raptoreum.conf"
+        if ($checkBox2.Checked) {
+            $raptoreumcli += " -testnet"
+        }
+    }
+    SaveFormData
+})
+
+# Add components to the General tab
+$GeneralTab.Controls.Add($label1)
+$GeneralTab.Controls.Add($checkBox1)
+$GeneralTab.Controls.Add($checkBox2)
+$GeneralTab.Controls.Add($label2)
+$GeneralTab.Controls.Add($textBox1)
+$GeneralTab.Controls.Add($button1)
+
 
 
 # Wallet tab buttons
-$buttons = @("Install Wallet", "Apply a Bootstrap (admin todo)", "Blockchain", "Control/Evo/Generating/Mining", "Wallet", "Network", "Protx Commands", "Util", "Edit RaptoreumCore Config File")
+$buttons = @("Install Wallet", "Apply a Bootstrap (admin)", "Blockchain", "Control/Evo/Generating/Mining", "Wallet", "Network", "Protx Commands", "Util", "Edit RaptoreumCore Config File")
 $top = 10
 $left = 10
 $width = 350
@@ -363,14 +515,14 @@ foreach ($btnText in $buttons) {
                 Reset-Button -index 0 -list $buttonListWallet
             })
         }
-        'Apply a Bootstrap' { 
+        'Apply a Bootstrap (admin)' { 
             $buttonWallet.Add_Click({
                 $bootstrapUrl = "https://raw.githubusercontent.com/wizz13150/RaptoreumStuff/main/RTM_Bootstrap.bat"
                 $bootstrapPath = "$env:TEMP\RTM_Bootstrap.bat"        
                 $wc = New-Object System.Net.WebClient
                 $wc.DownloadFile($bootstrapUrl, $bootstrapPath)        
                 Set-ButtonWorking -index 1 -list $buttonListWallet
-                Execute-Command -command "cmd /c $bootstrapPath" -background $true -console $consoleTextBoxWallet
+                Execute-Command -command "cmd /c $bootstrapPath" -background $true -console $consoleTextBoxWallet -admin $true
                 Reset-Button -index 1 -list $buttonListWallet
             })
         }
@@ -672,39 +824,6 @@ foreach ($btnText in $buttons) {
                 # Detect IP
                 $wanIP = Invoke-WebRequest -Uri "http://ipecho.net/plain" -UseBasicParsing | Select-Object -ExpandProperty Content
                 $wanIP
-                # Detect collateral inputs
-                $transactions = cmd /C "$raptoreumcli listtransactions" 2>&1 | ConvertFrom-Json
-                $transactionsForDropDown = @()
-                $transactionsForRealValue = @()
-                foreach ($transaction in $transactions) {
-                    if ($transaction.amount -eq $collateral) {
-                        $txid = $transaction.txid
-                        $shortTxid = $txid.Substring(0, 10) + "..." + $txid.Substring($txid.Length - 10)
-                        $amount = [math]::Abs($transaction.amount)
-                        $transactionsForDropDown += "$shortTxid - $amount RTM"
-                        $transactionsForRealValue += $txid
-                    }
-                }
-                $transactionsForDropDown
-
-                # Detect addresses for fee
-                $unspent = cmd /C "$raptoreumcli listunspent" 2>&1 | ConvertFrom-Json
-                $addressesForDropDown = @()
-                $addressesForRealValue = @()
-                $counter = 0
-                foreach ($entry in $unspent) {
-                    if ([double]$entry.amount -gt 1 -and [double]$entry.amount -lt $collateral) {
-                        $shortAddress = $entry.address.Substring(0, 10) + "..." + $entry.address.Substring($entry.address.Length - 10)
-                        $addressesForDropDown += "$shortAddress - $([double]$entry.amount) RTM"
-                        $addressesForRealValue += $($entry.address)
-                        $counter++
-                    }
-                    # first 50 only
-                    if ($counter -eq 50) { break }
-                }
-                $addressesForDropDown
-                Reset-Button -index 6 -list $buttonListWallet
-
                 $command = 'protx quick_setup'
                 $commandParameters = @{
                     $command = @{
@@ -712,26 +831,18 @@ foreach ($btnText in $buttons) {
                         'optional' = @('feeSourceAddress')
                         'types' = [ordered]@{
                             'collateralHash' = @{
-                                'type' = 'choices'
-                                'choices' = $transactionsForDropDown
-                                'realValue' = $transactionsForRealValue
-                                'quotes' = $true
+                                'type' = 'string'
                             }
                             'collateralIndex' = @{
                                 'type' = 'string'
                                 'defaultValue' = "0"
-                                'quotes' = $true
                             }
                             'ipAndPort' = @{
                                 'type' = 'string'
                                 'defaultValue' = "$($wanIP):$($port)"
-                                'quotes' = $true
                             }
                             'feeSourceAddress' = @{
-                                'type' = 'choices'
-                                'choices' = $addressesForDropDown
-                                'realValue' = $addressesForRealValue
-                                'quotes' = $true
+                                'type' = 'string'
                             }
                         }
                     }
@@ -1148,7 +1259,6 @@ foreach ($btnText in $buttons) {
                             'Dummy' = @{
                                 'type' = 'string'
                                 'defaultValue' = '*'
-                                'quotes' = $true
                             }
                             'Min Confirmations' = @{
                                 'type' = 'int'
@@ -2580,8 +2690,9 @@ foreach ($btnText in $buttons) {
     $top += 40
 }
 
+
 # Smartnode tab buttons
-$buttons = @("Install Smartnode", "Smartnode Dashboard 9000 Pro Plus", "Get blockchain info", "Smartnode status", "Start daemon (admin todo)", "Stop daemon (admin todo)", "Get daemon status", "Open a Bash (admin todo)", "Update Smartnode (admin todo)", "Edit Smartnode Config File")
+$buttons = @("Install a Smartnode", "Smartnode Dashboard 9000 Pro Plus", "Get blockchain info", "Smartnode status", "Start daemon (admin)", "Stop daemon (admin)", "Get daemon status", "Open a Bash (admin)", "Update Smartnode (admin)", "Edit Smartnode Config File")
 $top = 10
 $left = 10
 $width = 350
@@ -2600,14 +2711,14 @@ foreach ($btnText in $buttons) {
     $buttonSmartnode.Margin = New-Object System.Windows.Forms.Padding(0, 0, 0, 10)
     $buttonSmartnode.Font = New-Object System.Drawing.Font("Consolas", 10)
     switch ($btnText) {
-        'Install Smartnode' {
+        'Install a Smartnode' {
             $buttonSmartnode.Add_Click({
                 $installSmartnodeUrl = "https://raw.githubusercontent.com/wizz13150/Raptoreum_Smartnode/main/SmartNode_Install.bat"
                 $installSmartnodePath = "$env:TEMP\rtm_smartnode_installer.bat"        
                 $wc = New-Object System.Net.WebClient
                 $wc.DownloadFile($installSmartnodeUrl, $installSmartnodePath)   
                 Set-ButtonWorking -index 0 -list $buttonListSmartnode
-                Execute-Command -command "cmd /c $installSmartnodePath"  -background $true -console $consoleTextBoxSmartnode
+                Execute-Command -command "cmd /c $installSmartnodePath" -background $true -console $consoleTextBoxSmartnode
                 Reset-Button -index 0 -list $buttonListSmartnode
             })
         }        
@@ -2621,57 +2732,59 @@ foreach ($btnText in $buttons) {
         'Get blockchain info' {
             $buttonSmartnode.Add_Click({
                 Set-ButtonWorking -index 2 -list $buttonListSmartnode
-                Execute-WalletCommand -command "getblockchaininfo" -console $consoleTextBoxSmartnode
+                Execute-SmartnodeCommand -command "getblockchaininfo" -console $consoleTextBoxSmartnode
                 Reset-Button -index 2 -list $buttonListSmartnode
             })
         }
         'Smartnode status' {
             $buttonSmartnode.Add_Click({
                 Set-ButtonWorking -index 3 -list $buttonListSmartnode
-                Execute-SmartnodeCommand -command "status" -console $consoleTextBoxSmartnode
+                Execute-SmartnodeCommand -command "smartnode status" -console $consoleTextBoxSmartnode
                 Reset-Button -index 3 -list $buttonListSmartnode
             })
         }
-        'Start daemon' {
+        'Start daemon (admin)' {
             $buttonSmartnode.Add_Click({
                 Set-ButtonWorking -index 4 -list $buttonListSmartnode
-                Execute-Command -command "net start $serviceName" -console $consoleTextBoxSmartnode
+                Execute-Command -command "net start $global:serviceName" -console $consoleTextBoxSmartnode -admin $true
                 Reset-Button -index 4 -list $buttonListSmartnode
             })
         }
-        'Stop daemon' {
+        'Stop daemon (admin)' {
             $buttonSmartnode.Add_Click({
                 Set-ButtonWorking -index 5 -list $buttonListSmartnode
-                Execute-Command -command "net stop $serviceName" -console $consoleTextBoxSmartnode
+                Execute-Command -command "net stop $global:serviceName" -console $consoleTextBoxSmartnode -admin $true
                 Reset-Button -index 5 -list $buttonListSmartnode
             })
         }
         'Get daemon status' {
             $buttonSmartnode.Add_Click({
                 Set-ButtonWorking -index 6 -list $buttonListSmartnode
-                Execute-Command -command "sc query $serviceName" -console $consoleTextBoxSmartnode
+                Execute-Command -command "sc query $global:serviceName" -console $consoleTextBoxSmartnode
                 Reset-Button -index 6 -list $buttonListSmartnode
             })
         }
-        'Open a Bash' {
+        'Open a Bash (admin)' {
             $buttonSmartnode.Add_Click({
                 Set-ButtonWorking -index 7 -list $buttonListSmartnode
-                #Execute-Command -command "start cmd.exe /k type $env:USERPROFILE\RTM-MOTD.txt" -background $true -console $consoleTextBoxSmartnode
-                Start-Process -FilePath cmd.exe -ArgumentList "/k type $env:USERPROFILE\RTM-MOTD.txt" -WindowStyle Normal -Verb RunAs
+                if ($raptoreumcli -match "-testnet") {$MOTD = "RTM-MOTD_testnet.txt"} else {$MOTD = "RTM-MOTD.txt"}
+                Execute-Command -command "start cmd.exe /k type $env:USERPROFILE\$MOTD" -console $consoleTextBoxSmartnode -admin $true
                 Reset-Button -index 7 -list $buttonListSmartnode
             })
         }
-        'Update Smartnode' {
+        'Update Smartnode (admin)' {
             $buttonSmartnode.Add_Click({
                 Set-ButtonWorking -index 8 -list $buttonListSmartnode
-                Execute-Command -command "powershell.exe -ExecutionPolicy Bypass -File $env:USERPROFILE\update.ps1"-background $true -console $consoleTextBoxSmartnode
+                if ($raptoreumcli -match "-testnet") {$update = "update_testnet.ps1"} else {$update = "update.ps1"}
+                Execute-Command -command "powershell.exe -ExecutionPolicy Bypass -File $env:USERPROFILE\$update" -console $consoleTextBoxSmartnode -admin $true
                 Reset-Button -index 8 -list $buttonListSmartnode
             })
         }
         'Edit Smartnode Config File' {
             $buttonSmartnode.Add_Click({
                 Set-ButtonWorking -index 9 -list $buttonListSmartnode
-                Execute-Command -command "notepad `"$env:APPDATA\RaptoreumSmartnode\raptoreum.conf`"" -console $consoleTextBoxSmartnode
+                if ($raptoreumcli -match "-testnet") {$conf = "RaptoreumSmartnode\nodetest\raptoreum.conf"} else {$conf = "RaptoreumSmartnode\raptoreum.conf"}
+                Execute-Command -command "notepad `"$env:APPDATA\$conf`"" -console $consoleTextBoxSmartnode
                 Reset-Button -index 9 -list $buttonListSmartnode
             })
         }
@@ -2937,13 +3050,6 @@ $MinerTab.Controls.Add($PassLabel)
 $PassTextBox = New-Object System.Windows.Forms.TextBox
 $PassTextBox.Location = New-Object System.Drawing.Point(460, 70)
 $PassTextBox.Size = New-Object System.Drawing.Size(200, 20)
-$PassTextBox.Add_TextChanged({
-    if ($PassTextBox.Text.Length -lt 6) {
-        $PassTextBox.ForeColor = [System.Drawing.Color]::Red
-    } else {
-        $PassTextBox.ForeColor = [System.Drawing.Color]::Black
-    }
-})
 $MinerTab.Controls.Add($PassTextBox)
 
 $ThreadsLabel = New-Object System.Windows.Forms.Label
@@ -3003,6 +3109,9 @@ $OpenCLPlatformsComboBox.Size = New-Object System.Drawing.Size(120, 21)
 $OpenCLPlatformsComboBox.DropDownStyle = [System.Windows.Forms.ComboBoxStyle]::DropDownList
 $OpenCLPlatformsComboBox.Items.AddRange(@('all', 'nvidia', 'amd'))
 $OpenCLPlatformsComboBox.SelectedItem = 'all'
+$OpenCLPlatformsComboBox.add_SelectedIndexChanged({
+    SaveFormData
+})
 $MinerTab.Controls.Add($OpenCLPlatformsComboBox)
 
 # OpenCL Threads Label and TextBox
@@ -3016,6 +3125,9 @@ $OpenCLThreadsTextBox = New-Object System.Windows.Forms.TextBox
 $OpenCLThreadsTextBox.Location = New-Object System.Drawing.Point(520, 205)
 $OpenCLThreadsTextBox.Size = New-Object System.Drawing.Size(120, 20)
 $OpenCLThreadsTextBox.Text = "auto"
+$OpenCLThreadsTextBox.add_TextChanged({
+    SaveFormData
+})
 $MinerTab.Controls.Add($OpenCLThreadsTextBox)
 
 # Get devices
@@ -3030,11 +3142,16 @@ $initialY = 235
 $y = $initialY
 $maxPerRow = 2
 $checkBoxCount = 0
+$checkBoxes = New-Object System.Collections.Generic.List[System.Object]
 foreach ($GPUInfo in $GPUInfos) {
     $CheckBox = New-Object System.Windows.Forms.CheckBox
     $CheckBox.Location = New-Object System.Drawing.Point(400, $y)
     $CheckBox.Size = New-Object System.Drawing.Size(180, 20)
     $CheckBox.Text = "GPU$($GPUInfo.Index): $($GPUInfo.Name)"
+    $CheckBox.add_CheckStateChanged({
+        SaveFormData
+    })
+    $checkBoxes.Add($CheckBox)
     $MinerTab.Controls.Add($CheckBox)
     
     $checkBoxCount++
@@ -3117,7 +3234,22 @@ foreach ($btnText in $buttons) {
     $HelpTab.Controls.Add($Button)
     $top += 40
 }
-# Load miners settings
+
+# Creation PictureBox
+$PictureBox = New-Object System.Windows.Forms.PictureBox
+$PictureBox.Location = New-Object System.Drawing.Point(380, 40)
+$PictureBox.Size = New-Object System.Drawing.Size(550, 336)
+$filePath = ".\RTMLand.png"
+if (!(Test-Path -Path $filePath)) {
+    Invoke-WebRequest -Uri "https://github.com/wizz13150/Raptoreum_SmartNode/raw/main/test/RTMLand.png" -OutFile $filePath
+}
+$PictureBox.Image = [System.Drawing.Image]::FromFile(".\RTMLand.png")
+# Stretch the image to fit the PictureBox
+#$PictureBox.SizeMode = [System.Windows.Forms.PictureBoxSizeMode]::StretchImage
+$HelpTab.Controls.Add($PictureBox)
+
+
+# Load last settings
 LoadFormData
 
 $Form.Controls.Add($TabControl)
