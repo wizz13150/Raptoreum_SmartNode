@@ -7,20 +7,21 @@
 Add-Type -AssemblyName System.Windows.Forms
 
 # Vars
-$smartnodecli = $env:raptoreumcli
-$raptoreumcli = "H:\Raptoreum\Wallet1.3.17.04\raptoreum-cli.exe -conf=H:\Raptoreum\Wallet\raptoreum.conf -testnet"
+$global:smartnodeFolder = "$env:AppData\RaptoreumSmartnode"
+$global:raptoreumFolder = "$env:AppData\RaptoreumCore"
+$global:smartnodecli = $env:traptoreumcli
+$global:raptoreumcli = "$env:ProgramFiles\RaptoreumCore\daemon\raptoreum-cli.exe"
 $global:serviceName = "RTMService"
-$executablePath = "H:\Raptoreum\Wallet1.3.17.04\raptoreum-qt.exe"
-if ($raptoreumcli -match "-testnet") {$port = "10229";$collateral="60000"} else {$port = "10226";$collateral="1800000"}
+if ($global:raptoreumcli -match "-testnet") {$port = "10229";$collateral="60000"} else {$port = "10226";$collateral="1800000"}
 
 # Functions
 function Execute-Command {
-    param($command, $background = $false, $console, $admin = $false)
+    param($command, $background = $false, $console, $admin = $false, $hidden = "Normal")
 
     if ($background) {
         $job = Start-Job -ScriptBlock {
             param ($command)
-            Start-Process -FilePath "cmd.exe" -ArgumentList "/c $command" -WindowStyle Normal
+            Start-Process -FilePath "cmd.exe" -ArgumentList "/c $command"
         } -ArgumentList $command
         $job | Wait-Job
         $console.Clear()
@@ -28,7 +29,7 @@ function Execute-Command {
         $console.AppendText("[$timestamp] > $command (Executed in a new CMD window)")
     } else {
         if ($admin) {
-            $process = Start-Process -FilePath "cmd.exe" -ArgumentList "/c $command" -WindowStyle Normal -PassThru -Verb RunAs
+            $process = Start-Process -FilePath "cmd.exe" -ArgumentList "/c $command" -WindowStyle $hidden -PassThru -Verb RunAs
             $process.WaitForExit()
         } else {
             $output = cmd /C $command 2>&1
@@ -44,9 +45,9 @@ function Execute-WalletCommand {
     param($command, $console, $parameters)
 
     $job = Start-Job -ScriptBlock {
-        param ($command, $parameters, $raptoreumcli)
-        cmd /C "$raptoreumcli $command $parameters" 2>&1
-    } -ArgumentList $command, $parameters, $raptoreumcli
+        param ($command, $parameters, $global:raptoreumcli)
+        cmd /C "`"$global:raptoreumcli`" $command $parameters" 2>&1
+    } -ArgumentList $command, $parameters, $global:raptoreumcli
     $output = $job | Wait-Job | Receive-Job
     $console.Clear()
     $timestamp = Get-Date -Format "HH:mm:ss"
@@ -64,11 +65,11 @@ function Print-Command {
 
 function Execute-SmartnodeCommand {
     param($command, $console, $parameters)
-
+    write-host "smartnodecli: $global:smartnodecli"
     $job = Start-Job -ScriptBlock {
-        param ($command, $smartnodecli)
-        cmd /C "$smartnodecli $command" 2>&1
-    } -ArgumentList $command, $smartnodecli
+        param ($command, $global:smartnodecli)
+        cmd /C "$global:smartnodecli $command" 2>&1
+    } -ArgumentList $command, $global:smartnodecli
     $output = $job | Wait-Job | Receive-Job
     $console.Clear()
     $timestamp = Get-Date -Format "HH:mm:ss"
@@ -79,18 +80,20 @@ function Execute-SmartnodeCommand {
 function SaveFormData {
     $checkedGPUs = ($MinerTab.Controls | Where-Object { $_ -is [System.Windows.Forms.CheckBox] -and $_.Checked } | ForEach-Object { $_.Text.Split(" ")[0].Replace("GPU", "").Replace(":", "") }) -join ","
     $textBox1TextEscaped = $textBox1.Text.Replace('\', '\\')
+    $textBox2TextEscaped = $textBox2.Text.Replace('\', '\\')
     $json = @"
 {
     "Pool": "$($PoolTextBox.Text)",
     "User": "$($UserTextBox.Text)",
     "Pass": "$($PassTextBox.Text)",
-    "Threads": $($ThreadsTrackBar.Value),
+    "Threads": "$($ThreadsTrackBar.Value)",
     "Platforms": "$($OpenCLPlatformsComboBox.SelectedItem)",
     "OpenCLThreads": "$($OpenCLThreadsTextBox.Text)",
     "CheckedGPUs": "$checkedGPUs",
     "CheckBox1": "$($checkBox1.Checked.ToString().ToLower())",
     "CheckBox2": "$($checkBox2.Checked.ToString().ToLower())",
-    "TextBox1": "$textBox1TextEscaped"
+    "TextBox1": "$textBox1TextEscaped",
+    "TextBox2": "$textBox2TextEscaped"
 }
 "@
     Set-Content -Path ".\config.json" -Value $json -Force
@@ -121,6 +124,7 @@ function LoadFormData {
             $checkBox2.Checked = $true
         } else {$checkBox2.Checked = $false}
         $textBox1.Text = $config.TextBox1
+        $textBox2.Text = $config.TextBox2
     } else {
         $PoolTextBox.Text = "stratum+tcp://eu.flockpool.com:4444"
         $UserTextBox.Text = "RMRwCAkSJaWHGPiP1rF5EHuUYDTze2xw6J.wizz"
@@ -131,7 +135,28 @@ function LoadFormData {
         $OpenCLThreadsTextBox.Text = "auto"
         $checkBox1.Checked = $false
         $checkBox2.Checked = $false
-        $textBox1.Text = ""
+    }
+    Change-Vars
+}
+
+function Change-Vars {
+    if ($checkBox1.Checked -eq $true) {
+        $global:smartnodecli = $env:traptoreumcli
+        $global:serviceName = "RTMServiceTestnet"
+        Write-Host "checkBox1 checked, using 'RTMServiceTestnet' as service name"
+    } else {
+        $global:smartnodecli = $env:raptoreumcli
+        $global:serviceName = "RTMService"
+        Write-Host "checkBox1 unchecked, using 'RTMService' as service name"
+    }
+    if ($checkBox2.Checked -eq $true) {
+        $global:raptoreumcli = $global:raptoreumcli + " -testnet"
+        Write-Host "checkBox2 checked, using '-testnet' as param for RaptoreumCore"
+    } else {
+        if ($global:raptoreumcli -like "* -testnet") {
+            $global:raptoreumcli = $global:raptoreumcli -replace " -testnet", ""
+            Write-Host "checkBox2 unchecked, NOT using '-testnet' as param for RaptoreumCore"
+        }
     }
 }
 
@@ -160,7 +185,7 @@ function Show-CommandParametersForm {
         $types = $parameters['types']
         $totalParameters = $requiredParameters.Count + $optionalParameters.Count
         $form = New-Object System.Windows.Forms.Form
-        $form.Icon = [System.Drawing.Icon]::ExtractAssociatedIcon($executablePath)
+        $form.Icon = [System.Drawing.Icon]::ExtractAssociatedIcon($icoPath)
         $form.Text = $command
         $form.Width = 315
         $form.StartPosition = "CenterScreen"
@@ -331,29 +356,20 @@ function Show-CommandParametersForm {
     }
 }
 
-function Update-RaptoreumCli {
-    # Start with clean base cli command
-    $raptoreumcli = "`"$($TextBox1.Text)`""
-    
-    # Add -conf option only if it's not already present
-    if ($raptoreumcli -notlike "*-conf=*") {
-        $raptoreumcli += "-conf=H:\Raptoreum\Wallet\raptoreum.conf"
-    }
-    
-    # Add testnet option only if checkbox2 is checked and it's not already present
-    if ($checkBox2.Checked -and $raptoreumcli -notlike "*-testnet") {
-        $raptoreumcli += " -testnet"
-    } elseif ($raptoreumcli -like "*-testnet") {
-        $raptoreumcli = $raptoreumcli -replace " -testnet", ""
-    }
+
+### UI ###
+
+# Icon
+$icoPath = ".\icon.ico"
+if (!(Test-Path -Path $icoPath)) {
+    Invoke-WebRequest -Uri "https://github.com/wizz13150/Raptoreum_SmartNode/blob/main/test/icon.ico" -OutFile $icoPath
 }
 
-# UI
 $Form = New-Object System.Windows.Forms.Form
 $Form.Text = "Raptoreum Tools"
 $Form.Size = New-Object System.Drawing.Size(975, 490)
 $Form.StartPosition = "CenterScreen"
-$Form.Icon = [System.Drawing.Icon]::ExtractAssociatedIcon($executablePath)
+$Form.Icon = $icoPath
 
 $TabControl = New-Object System.Windows.Forms.TabControl
 $TabControl.Location = New-Object System.Drawing.Point(10, 10)
@@ -381,8 +397,8 @@ $HelpTab.Text = "Help & Community"
 $TabControl.Controls.Add($HelpTab)
 
 $consoleTextBoxSmartnode = New-Object System.Windows.Forms.TextBox
-$consoleTextBoxSmartnode.Location = New-Object System.Drawing.Point(400, 10)
-$consoleTextBoxSmartnode.Size = New-Object System.Drawing.Size(520, 400)
+$consoleTextBoxSmartnode.Location = New-Object System.Drawing.Point(400, 50)
+$consoleTextBoxSmartnode.Size = New-Object System.Drawing.Size(520, 360)
 $consoleTextBoxSmartnode.Multiline = $true
 $consoleTextBoxSmartnode.ScrollBars = 'Vertical'
 $consoleTextBoxSmartnode.ReadOnly = $true
@@ -392,8 +408,8 @@ $consoleTextBoxSmartnode.Font = New-Object System.Drawing.Font("Consolas", 9)
 $SmartnodeTab.Controls.Add($consoleTextBoxSmartnode)
 
 $consoleTextBoxWallet = New-Object System.Windows.Forms.TextBox
-$consoleTextBoxWallet.Location = New-Object System.Drawing.Point(400, 10)
-$consoleTextBoxWallet.Size = New-Object System.Drawing.Size(520, 400)
+$consoleTextBoxWallet.Location = New-Object System.Drawing.Point(400, 50)
+$consoleTextBoxWallet.Size = New-Object System.Drawing.Size(520, 360)
 $consoleTextBoxWallet.Multiline = $true
 $consoleTextBoxWallet.ScrollBars = 'Vertical'
 $consoleTextBoxWallet.ReadOnly = $true
@@ -404,83 +420,119 @@ $WalletTab.Controls.Add($consoleTextBoxWallet)
 
 
 # General tab
+$labelGeneral = New-Object System.Windows.Forms.Label
+$labelGeneral.Location = New-Object System.Drawing.Point(10, 10)
+$labelGeneral.Size = New-Object System.Drawing.Size(300, 25)
+$labelGeneral.Text = "Variables"
+$labelGeneral.Font = New-Object System.Drawing.Font("Arial", 15, [System.Drawing.FontStyle]::Bold)
+
 $label1 = New-Object System.Windows.Forms.Label
-$label1.Location = New-Object System.Drawing.Point(10, 10)
+$label1.Location = New-Object System.Drawing.Point(10, 40)
 $label1.Size = New-Object System.Drawing.Size(300, 20)
-$label1.Text = "Run in Testnet mode"
+$label1.Text = "Run in Testnet mode :"
 
 $checkBox1 = New-Object System.Windows.Forms.CheckBox
-$checkBox1.Location = New-Object System.Drawing.Point(10, 30)
+$checkBox1.Location = New-Object System.Drawing.Point(10, 60)
 $checkBox1.Size = New-Object System.Drawing.Size(300, 20)
 $checkBox1.Text = "My Smartnode is running in Testnet mode"
+$checkBox1.Add_Click({
+    SaveFormData
+    if ($checkBox1.Checked) {
+        $global:smartnodecli = $env:traptoreumcli
+        $global:serviceName = "RTMServiceTestnet"
+    } else {
+        $global:smartnodecli = $env:raptoreumcli
+        $global:serviceName = "RTMService"
+    }
+})
 
 $checkBox2 = New-Object System.Windows.Forms.CheckBox
-$checkBox2.Location = New-Object System.Drawing.Point(10, 60)
+$checkBox2.Location = New-Object System.Drawing.Point(10, 90)
 $checkBox2.Size = New-Object System.Drawing.Size(300, 20)
 $checkBox2.Text = "My RaptoreumCore is running in Testnet mode"
+$checkBox2.Add_Click({
+    SaveFormData
+    if ($checkBox2.Checked) {
+        $global:raptoreumcli = $global:raptoreumcli + " -testnet"
+    } else {
+        if ($global:raptoreumcli -like "* -testnet") {
+            $global:raptoreumcli = $global:raptoreumcli -replace " -testnet", ""
+        }
+    }
+})
 
 $label2 = New-Object System.Windows.Forms.Label
-$label2.Location = New-Object System.Drawing.Point(10, 100)
+$label2.Location = New-Object System.Drawing.Point(10, 130)
 $label2.Size = New-Object System.Drawing.Size(300, 30)
-$label2.Text = "Select a custom conf file to use for RaptoreumCore`n(not for the Smartnode) :"
+$label2.Text = "Folder for the Smartnode :`n(If empty, please select a folder to use commands)"
 
 $textBox1 = New-Object System.Windows.Forms.TextBox
-$textBox1.Location = New-Object System.Drawing.Point(10, 130)
+$textBox1.Location = New-Object System.Drawing.Point(10, 160)
 $textBox1.Size = New-Object System.Drawing.Size(260, 20)
+if ($global:smartnodeFolder) {
+    $textBox1.Text = $global:smartnodeFolder
+}
 $textBox1.add_TextChanged({
     SaveFormData
 })
 
 $button1 = New-Object System.Windows.Forms.Button
-$button1.Location = New-Object System.Drawing.Point(280, 130)
+$button1.Location = New-Object System.Drawing.Point(280, 160)
 $button1.Size = New-Object System.Drawing.Size(75, 23)
 $button1.Text = "Browse..."
-
-# Checkbox click events
-$checkBox1.Add_Click({
-    SaveFormData
-    if ($checkBox1.Checked) {
-        $smartnodecli = $env:traptoreumcli
-        $global:serviceName = "RTMServiceTestnet"
-    } else {
-        $smartnodecli = $env:raptoreumcli
-        $global:serviceName = "RTMService"
-    }
-})
-
-$checkBox2.Add_Click({
-    SaveFormData
-    if ($checkBox2.Checked) {
-        $raptoreumcli = $raptoreumcli + " -testnet"
-    } else {
-        if ($raptoreumcli -like "* -testnet") {
-            $raptoreumcli = $raptoreumcli -replace " -testnet", ""
-        }
-    }
-})
-
-# Button click event to open file dialog
-$button1.Add_Click({    
+$button1.Add_Click({
     $openFileDialog = New-Object System.Windows.Forms.OpenFileDialog
     $openFileDialog.InitialDirectory = $env:USERPROFILE
     $openFileDialog.Filter = "All files (*.*)|*.*"
     if ($openFileDialog.ShowDialog() -eq "OK") {
         $textBox1.Text = $openFileDialog.FileName
-        $raptoreumcli = "`"$($TextBox.Text)`" -conf=H:\Raptoreum\Wallet\raptoreum.conf"
+        $global:raptoreumcli = "`"$($textBox1.Text)`" -conf=H:\Raptoreum\Wallet\raptoreum.conf"
         if ($checkBox2.Checked) {
-            $raptoreumcli += " -testnet"
+            $global:raptoreumcli += " -testnet"
         }
     }
     SaveFormData
 })
 
+$label3 = New-Object System.Windows.Forms.Label
+$label3.Location = New-Object System.Drawing.Point(10, 200)
+$label3.Size = New-Object System.Drawing.Size(300, 30)
+$label3.Text = "Folder for RaptoreumCore:`n(If empty, please select a folder to use commands)"
+
+$textBox2 = New-Object System.Windows.Forms.TextBox
+$textBox2.Location = New-Object System.Drawing.Point(10, 230)
+$textBox2.Size = New-Object System.Drawing.Size(260, 20)
+if ($global:raptoreumFolder) {
+    $textBox2.Text = $global:raptoreumFolder
+}
+$textBox2.add_TextChanged({
+    SaveFormData
+})
+
+$button2 = New-Object System.Windows.Forms.Button
+$button2.Location = New-Object System.Drawing.Point(280, 230)
+$button2.Size = New-Object System.Drawing.Size(75, 23)
+$button2.Text = "Browse..."
+$button2.Add_Click({    
+    $folderBrowserDialog = New-Object System.Windows.Forms.FolderBrowserDialog
+    $folderBrowserDialog.SelectedPath = $env:USERPROFILE
+    if ($folderBrowserDialog.ShowDialog() -eq "OK") {
+        $textBox2.Text = $folderBrowserDialog.SelectedPath
+    }
+    SaveFormData
+})
+
 # Add components to the General tab
+$GeneralTab.Controls.Add($labelGeneral)
 $GeneralTab.Controls.Add($label1)
 $GeneralTab.Controls.Add($checkBox1)
 $GeneralTab.Controls.Add($checkBox2)
 $GeneralTab.Controls.Add($label2)
 $GeneralTab.Controls.Add($textBox1)
 $GeneralTab.Controls.Add($button1)
+$GeneralTab.Controls.Add($label3)
+$GeneralTab.Controls.Add($textBox2)
+$GeneralTab.Controls.Add($button2)
 
 
 
@@ -522,7 +574,7 @@ foreach ($btnText in $buttons) {
                 $wc = New-Object System.Net.WebClient
                 $wc.DownloadFile($bootstrapUrl, $bootstrapPath)        
                 Set-ButtonWorking -index 1 -list $buttonListWallet
-                Execute-Command -command "cmd /c $bootstrapPath" -background $true -console $consoleTextBoxWallet -admin $true
+                Execute-Command -command "cmd /c $bootstrapPath" -console $consoleTextBoxWallet -admin $true
                 Reset-Button -index 1 -list $buttonListWallet
             })
         }
@@ -823,7 +875,6 @@ foreach ($btnText in $buttons) {
                 Set-ButtonWorking -index 6 -list $buttonListWallet
                 # Detect IP
                 $wanIP = Invoke-WebRequest -Uri "http://ipecho.net/plain" -UseBasicParsing | Select-Object -ExpandProperty Content
-                $wanIP
                 $command = 'protx quick_setup'
                 $commandParameters = @{
                     $command = @{
@@ -860,9 +911,8 @@ foreach ($btnText in $buttons) {
                 Set-ButtonWorking -index 6 -list $buttonListWallet
                 # Detect IP
                 $wanIP = Invoke-WebRequest -Uri "http://ipecho.net/plain" -UseBasicParsing | Select-Object -ExpandProperty Content
-                $wanIP
                 # Detect addresses for fee
-                $unspent = cmd /C "$raptoreumcli listunspent" 2>&1 | ConvertFrom-Json
+                $unspent = cmd /C "$global:raptoreumcli listunspent" 2>&1 | ConvertFrom-Json
                 $addressesForDropDown = @()
                 $addressesForRealValue = @()
                 $counter = 0
@@ -1043,6 +1093,8 @@ foreach ($btnText in $buttons) {
             $ProtxUpdateServiceItem = New-Object System.Windows.Forms.ToolStripMenuItem
             $ProtxUpdateServiceItem.Text = "ProTX Update Service"
             $ProtxUpdateServiceItem.Add_Click({
+                # Detect IP
+                $wanIP = Invoke-WebRequest -Uri "http://ipecho.net/plain" -UseBasicParsing | Select-Object -ExpandProperty Content
                 $command = 'protx update_service'
                 $commandParameters = @{
                     $command = @{
@@ -1054,6 +1106,7 @@ foreach ($btnText in $buttons) {
                             }
                             'ipAndPort' = @{
                                 'type' = 'string'
+                                'defaultValue' = "$($wanIP):$($port)"
                             }
                             'operatorPubKey' = @{
                                 'type' = 'string'
@@ -2681,7 +2734,10 @@ foreach ($btnText in $buttons) {
         }
         'Edit RaptoreumCore Config File' {
             $buttonWallet.Add_Click({
-                Execute-Command -command "notepad `"$env:APPDATA\RaptoreumCore\raptoreum.conf`""
+                Set-ButtonWorking -index 4 -list $buttonListWallet
+                if ($checkBox2.Checked -eq $true) {$rtmconf = "nodetest\raptoreum_testnet.conf"} else {$rtmconf = "raptoreum.conf"}
+                Execute-Command -command "notepad `"$global:raptoreumFolder\$rtmconf`"" -console $consoleTextBoxWallet -background $true
+                Reset-Button -index 4 -list $buttonListWallet
             })
         }
     }
@@ -2692,7 +2748,7 @@ foreach ($btnText in $buttons) {
 
 
 # Smartnode tab buttons
-$buttons = @("Install a Smartnode", "Smartnode Dashboard 9000 Pro Plus", "Get blockchain info", "Smartnode status", "Start daemon (admin)", "Stop daemon (admin)", "Get daemon status", "Open a Bash (admin)", "Update Smartnode (admin)", "Edit Smartnode Config File")
+$buttons = @("Install a Smartnode", "Smartnode Dashboard 9000 Pro Plus", "Get blockchain info", "Smartnode status", "Start daemon (admin)", "Stop daemon (admin)", "Get daemon status", "Open a Smartnode Bash (admin)", "Update Smartnode (admin)", "Edit Smartnode Config File")
 $top = 10
 $left = 10
 $width = 350
@@ -2718,7 +2774,7 @@ foreach ($btnText in $buttons) {
                 $wc = New-Object System.Net.WebClient
                 $wc.DownloadFile($installSmartnodeUrl, $installSmartnodePath)   
                 Set-ButtonWorking -index 0 -list $buttonListSmartnode
-                Execute-Command -command "cmd /c $installSmartnodePath" -background $true -console $consoleTextBoxSmartnode
+                Execute-Command -command "cmd /c $installSmartnodePath" -background $true -console $consoleTextBoxSmartnode -hidden "Hidden"
                 Reset-Button -index 0 -list $buttonListSmartnode
             })
         }        
@@ -2746,6 +2802,7 @@ foreach ($btnText in $buttons) {
         'Start daemon (admin)' {
             $buttonSmartnode.Add_Click({
                 Set-ButtonWorking -index 4 -list $buttonListSmartnode
+                Change-Vars
                 Execute-Command -command "net start $global:serviceName" -console $consoleTextBoxSmartnode -admin $true
                 Reset-Button -index 4 -list $buttonListSmartnode
             })
@@ -2753,6 +2810,7 @@ foreach ($btnText in $buttons) {
         'Stop daemon (admin)' {
             $buttonSmartnode.Add_Click({
                 Set-ButtonWorking -index 5 -list $buttonListSmartnode
+                Change-Vars
                 Execute-Command -command "net stop $global:serviceName" -console $consoleTextBoxSmartnode -admin $true
                 Reset-Button -index 5 -list $buttonListSmartnode
             })
@@ -2760,14 +2818,16 @@ foreach ($btnText in $buttons) {
         'Get daemon status' {
             $buttonSmartnode.Add_Click({
                 Set-ButtonWorking -index 6 -list $buttonListSmartnode
+                Change-Vars
+                Write-Host "global:serviceName when clicking: $global:serviceName"
                 Execute-Command -command "sc query $global:serviceName" -console $consoleTextBoxSmartnode
                 Reset-Button -index 6 -list $buttonListSmartnode
             })
         }
-        'Open a Bash (admin)' {
+        'Open a Smartnode Bash (admin)' {
             $buttonSmartnode.Add_Click({
                 Set-ButtonWorking -index 7 -list $buttonListSmartnode
-                if ($raptoreumcli -match "-testnet") {$MOTD = "RTM-MOTD_testnet.txt"} else {$MOTD = "RTM-MOTD.txt"}
+                if ($global:raptoreumcli -match "-testnet") {$MOTD = "RTM-MOTD_testnet.txt"} else {$MOTD = "RTM-MOTD.txt"}
                 Execute-Command -command "start cmd.exe /k type $env:USERPROFILE\$MOTD" -console $consoleTextBoxSmartnode -admin $true
                 Reset-Button -index 7 -list $buttonListSmartnode
             })
@@ -2775,7 +2835,7 @@ foreach ($btnText in $buttons) {
         'Update Smartnode (admin)' {
             $buttonSmartnode.Add_Click({
                 Set-ButtonWorking -index 8 -list $buttonListSmartnode
-                if ($raptoreumcli -match "-testnet") {$update = "update_testnet.ps1"} else {$update = "update.ps1"}
+                if ($checkBox1.Checked -eq $true) {$update = "update_testnet.ps1"} else {$update = "update.ps1"}
                 Execute-Command -command "powershell.exe -ExecutionPolicy Bypass -File $env:USERPROFILE\$update" -console $consoleTextBoxSmartnode -admin $true
                 Reset-Button -index 8 -list $buttonListSmartnode
             })
@@ -2783,8 +2843,8 @@ foreach ($btnText in $buttons) {
         'Edit Smartnode Config File' {
             $buttonSmartnode.Add_Click({
                 Set-ButtonWorking -index 9 -list $buttonListSmartnode
-                if ($raptoreumcli -match "-testnet") {$conf = "RaptoreumSmartnode\nodetest\raptoreum.conf"} else {$conf = "RaptoreumSmartnode\raptoreum.conf"}
-                Execute-Command -command "notepad `"$env:APPDATA\$conf`"" -console $consoleTextBoxSmartnode
+                if ($checkBox1.Checked -eq $true) {$conf = "nodetest\raptoreum_testnet.conf"} else {$conf = "raptoreum.conf"}
+                Execute-Command -command "notepad `"$global:smartnodeFolder\$conf`"" -console $consoleTextBoxSmartnode -background $true -hidden "Hidden"
                 Reset-Button -index 9 -list $buttonListSmartnode
             })
         }
@@ -3249,8 +3309,15 @@ $PictureBox.Image = [System.Drawing.Image]::FromFile(".\RTMLand.png")
 $HelpTab.Controls.Add($PictureBox)
 
 
+
 # Load last settings
 LoadFormData
+
+Write-Host "global:smartnodeFolder: $global:smartnodeFolder"
+Write-Host "global:raptoreumFolder: $global:raptoreumFolder"
+Write-Host "global:smartnodecli: $global:smartnodecli"
+Write-Host "global:raptoreumcli: $global:raptoreumcli"
+Write-Host "global:serviceName: $global:serviceName"
 
 $Form.Controls.Add($TabControl)
 $Form.Add_Shown({$Form.Activate()})
