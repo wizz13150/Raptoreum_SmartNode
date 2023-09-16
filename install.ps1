@@ -117,7 +117,7 @@ function Check-BootstrapZipChecksum {
     $latestVersion = $response.tag_name
     $checksumsUrl = "https://checksums.raptoreum.com/checksums/bootstrap-checksums.txt"
     $checksums = Invoke-WebRequest -Uri $checksumsUrl -UseBasicParsing
-    $remoteChecksum = ($checksums.Content.Split("`n") | Select-String -Pattern "v$latestVersion/no-index/bootstrap.zip").ToString().Split(" ")[0].Trim()
+    $remoteChecksum = ($checksums.Content.Split("`n") | Select-String -Pattern "bootstrap.zip").ToString().Split(" ")[0].Trim()
     Write-CurrentTime; Write-Host "  Checksum: $remoteChecksum" -ForegroundColor Yellow
     $localChecksum = (Get-FileHash -Path $($bootstrapZipPath) -Algorithm SHA256 | Select-Object -ExpandProperty Hash).ToLower()
     if ($localChecksum -eq $remoteChecksum) {
