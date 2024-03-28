@@ -15,8 +15,8 @@ if (-not (IsAdministrator)) {
 }
 
 # Script vars
-#$bootstrapZip = "https://bootstrap.raptoreum.com/testnet-bootstraps/testnet-bootstrap-1.3.17.02rc.zip"                        #Official testnet bootstrap (blockheight 98K)
-$bootstrapZip = "https://github.com/wizz13150/Raptoreum_SmartNode/releases/download/Raptoreum_SmartNode/bootstrap-testnet.zip" #wizz's bootstrap (blockheight 177K)
+$bootstrapZip = "https://bootstrap.raptoreum.com/testnet-bootstraps/testnet-bootstrap-1.3.17.02rc.zip"                        #Official testnet bootstrap
+#$bootstrapZip = "https://github.com/wizz13150/Raptoreum_SmartNode/releases/download/Raptoreum_SmartNode/bootstrap-testnet.zip" #wizz's bootstrap
 $configDir = "$env:APPDATA\RaptoreumSmartnode"
 $coinPath = "$env:ProgramFiles (x86)\RaptoreumCore"
 $configPath = "$configDir\nodetest\raptoreum_testnet.conf"
