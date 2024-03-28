@@ -16,7 +16,7 @@ if (-not (IsAdministrator)) {
 
 # Script vars
 #$bootstrapZip = "https://bootstrap.raptoreum.com/testnet-bootstraps/testnet-bootstrap-1.3.17.02rc.zip"                        #Official testnet bootstrap (blockheight 98K)
-$bootstrapZip = "https://github.com/wizz13150/Raptoreum_SmartNode/releases/download/Raptoreum_SmartNode/bootstrap-testnet.zip" #wizz's bootstrap (blockheight 177K)
+#$bootstrapZip = "https://github.com/wizz13150/Raptoreum_SmartNode/releases/download/Raptoreum_SmartNode/bootstrap-testnet.zip" #wizz's bootstrap (blockheight 177K)
 $configDir = "$env:APPDATA\RaptoreumSmartnode"
 $coinPath = "$env:ProgramFiles (x86)\RaptoreumCore"
 $configPath = "$configDir\nodetest\raptoreum_testnet.conf"
@@ -851,14 +851,14 @@ Get-SSHPort
 Confirm-IP
 Create-Conf -QuickSetup $true
 Basic-Security -QuickSetup $true
-Bootstrap-Chain -QuickSetup $true
+#Bootstrap-Chain -QuickSetup $true
 Schedule-Jobs -QuickSetup $true
 
 # Run functions
 Install-7Zip
 Install-Bins
 Create-Conf
-Bootstrap-Chain
+#Bootstrap-Chain
 Chain-Backup
 Basic-Security
 Create-Service
