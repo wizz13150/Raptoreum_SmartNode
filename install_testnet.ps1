@@ -124,10 +124,10 @@ function Extract-Bootstrap {
     }
     if ($zipProgram) {
         Write-CurrentTime; Write-Host "  7-Zip detected, using 7-Zip to extract the bootstrap. Faster..." -ForegroundColor Cyan
-        & "$zipProgram" x $Path -o"$configDir\$testnetfolder" -y
+        & "$zipProgram" x $Path -o"$configDir" -y
     } else {
         Write-CurrentTime; Write-Host "  7-Zip not detected, using 'Expand-Archive' to extract the bootstrap. Slower..." -ForegroundColor Cyan
-        Expand-Archive -Path $bootstrapZipPath -DestinationPath "$configDir\$testnetfolder" -Force -ErrorAction SilentlyContinue
+        Expand-Archive -Path $bootstrapZipPath -DestinationPath "$configDir" -Force -ErrorAction SilentlyContinue
     }
     Start-Sleep -Seconds 1
 }
