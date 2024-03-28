@@ -592,7 +592,7 @@ while (`$true) {
     if (`$smartnodeList -eq `$null -or `$smartnodeList.count -eq 0) {
         Display-Information 'Estimated reward per day.....' "N/A"
     } else {
-        Display-Information 'Estimated reward per day.....' "`$([Math]::Round((1440 / `$smartnodeList.count) * 1000, 2)) RTM (+ fees)"
+        Display-Information 'Estimated reward per day.....' "`$([Math]::Round((1440 / `$smartnodeList.count) * 1000, 2)) TRTM (+ fees)"
     }
     if (`$lastPaidBlock -ne `$null) {
         `$lastPaidTime = [DateTimeOffset]::FromUnixTimeSeconds(`$lastPaidBlock.time).ToLocalTime().DateTime
