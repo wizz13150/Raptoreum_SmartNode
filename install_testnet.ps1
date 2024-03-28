@@ -310,7 +310,7 @@ function Install-Bins {
     $uri = "https://api.github.com/repos/Raptor3um/raptoreum/releases/latest"
     $response = Invoke-RestMethod -Uri $uri
     $latestVersion = $response.tag_name
-    $walletUrl = "https://github.com/Raptor3um/raptoreum/releases/download/$latestVersion/raptoreum-win-$latestVersion.zip"
+    $walletUrl = "https://github.com/Raptor3um/raptoreum/releases/download/$latestVersion-testnet/raptoreum-win-$latestVersion-testnet.zip"
     # Fetch the latest release using GitHub
     $process = Get-Process "raptoreumd" -ErrorAction SilentlyContinue
     if ($process) {
@@ -582,7 +582,11 @@ while (`$true) {
     Display-Information 'Smartnode status.............' "`$(`$smartnodeStatus.status)" -Color `$(Get-DataColor (`$smartnodeStatus.status -match 'Ready'))
     Display-Information 'Smartnode connections........' "`$(`$connectionCount)" -Color `$(Get-DataColor (`$connectionCount -gt 8))
     Display-Information 'Smartnode folder size .......' "`$([math]::Round(`$folderSize.sum / 1GB, 2)) Gb"
-    Display-Information 'Estimated reward per day.....' "`$([Math]::Round((1440 / `$smartnodeList.count) * 1000, 2)) RTM (+ fees)"
+    if (`$smartnodeList -eq `$null -or `$smartnodeList.count -eq 0) {
+        Display-Information 'Estimated reward per day.....' "N/A"
+    } else {
+        Display-Information 'Estimated reward per day.....' "`$([Math]::Round((1440 / `$smartnodeList.count) * 1000, 2)) RTM (+ fees)"
+    }
     if (`$lastPaidBlock -ne `$null) {
         `$lastPaidTime = [DateTimeOffset]::FromUnixTimeSeconds(`$lastPaidBlock.time).ToLocalTime().DateTime
         `$timeElapsedDisplay = "{0}d {1}h {2}m" -f `$((Get-Date) - `$lastPaidTime).Days, `$((Get-Date) - `$lastPaidTime).Hours, `$((Get-Date) - `$lastPaidTime).Minutes
