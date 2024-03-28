@@ -562,7 +562,11 @@ while (`$true) {
     if (`$first) {Write-Host "Retrieved last paid block hash...." -NoNewline -ForegroundColor cyan; Write-Host "√" -ForegroundColor Green}
     `$lastPaidBlock = cmd /C "`$env:traptoreumcli getblock `$lastPaidBlockHash" | ConvertFrom-Json
     if (`$first) {Write-Host "Retrieved last paid block........." -NoNewline -ForegroundColor cyan; Write-Host "√" -ForegroundColor Green}
-    `$smartnodeRewardTx = cmd /C "`$env:traptoreumcli getrawtransaction `$(`$lastPaidBlock.tx[0]) 1" | ConvertFrom-Json
+    if (`$lastPaidBlock.tx -ne `$null -and `$lastPaidBlock.tx.Count -gt 0) {
+        `$smartnodeRewardTx = cmd /C "`$env:traptoreumcli getrawtransaction `$(`$lastPaidBlock.tx[0]) 1" | ConvertFrom-Json
+    } else {
+        `$smartnodeRewardTx = $null
+    }
     if (`$first) {Write-Host "Retrieved smartnode reward........" -NoNewline -ForegroundColor cyan; Write-Host "√" -ForegroundColor Green}
     `$latest = Invoke-RestMethod -Uri "https://api.github.com/repos/Raptor3um/raptoreum/releases/latest" -ErrorAction SilentlyContinue
     if (`$first) {Write-Host "Retrieved latest version.........." -NoNewline -ForegroundColor cyan; Write-Host "√" -ForegroundColor Green}
