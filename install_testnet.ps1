@@ -553,7 +553,7 @@ while (`$true) {
     `$systemStabilityIndex = Get-WmiObject -Class Win32_ReliabilityStabilityMetrics | Select-Object -ExpandProperty SystemStabilityIndex -First 1
     if (`$first) {Write-Host "Retrieved system stability index.." -NoNewline -ForegroundColor cyan; Write-Host "√" -ForegroundColor Green}
     `$os = Get-CimInstance -ClassName Win32_OperatingSystem
-    `$cpuUsage = (Get-CimInstance -ClassName Win32_PerfFormattedData_PerfOS_Processor | Where-Object { `$_.Name -eq "_Total" }).PercentProcessorTime
+    `$cpuUsage = (Get-WmiObject -Class Win32_Processor | Measure-Object -Property LoadPercentage -Average).Average
     `$drive = Get-Volume -DriveLetter (Split-Path -Qualifier `$env:APPDATA\RaptoreumSmartnode)[0]
     `$ostime = Get-WmiObject -Class Win32_OperatingSystem
     `$uptime = (Get-Date) - `$ostime.ConvertToDateTime(`$ostime.LastBootUpTime)
@@ -562,7 +562,11 @@ while (`$true) {
     if (`$first) {Write-Host "Retrieved last paid block hash...." -NoNewline -ForegroundColor cyan; Write-Host "√" -ForegroundColor Green}
     `$lastPaidBlock = cmd /C "`$env:traptoreumcli getblock `$lastPaidBlockHash" | ConvertFrom-Json
     if (`$first) {Write-Host "Retrieved last paid block........." -NoNewline -ForegroundColor cyan; Write-Host "√" -ForegroundColor Green}
-    `$smartnodeRewardTx = cmd /C "`$env:traptoreumcli getrawtransaction `$(`$lastPaidBlock.tx[0]) 1" | ConvertFrom-Json
+    if (`$lastPaidBlock.tx -ne `$null -and `$lastPaidBlock.tx.Count -gt 0) {
+        `$smartnodeRewardTx = cmd /C "`$env:traptoreumcli getrawtransaction `$(`$lastPaidBlock.tx[0]) 1" | ConvertFrom-Json
+    } else {
+        `$smartnodeRewardTx = `$null
+    }
     if (`$first) {Write-Host "Retrieved smartnode reward........" -NoNewline -ForegroundColor cyan; Write-Host "√" -ForegroundColor Green}
     `$latest = Invoke-RestMethod -Uri "https://api.github.com/repos/Raptor3um/raptoreum/releases/latest" -ErrorAction SilentlyContinue
     if (`$first) {Write-Host "Retrieved latest version.........." -NoNewline -ForegroundColor cyan; Write-Host "√" -ForegroundColor Green}
@@ -582,7 +586,11 @@ while (`$true) {
     Display-Information 'Smartnode status.............' "`$(`$smartnodeStatus.status)" -Color `$(Get-DataColor (`$smartnodeStatus.status -match 'Ready'))
     Display-Information 'Smartnode connections........' "`$(`$connectionCount)" -Color `$(Get-DataColor (`$connectionCount -gt 8))
     Display-Information 'Smartnode folder size .......' "`$([math]::Round(`$folderSize.sum / 1GB, 2)) Gb"
-    Display-Information 'Estimated reward per day.....' "`$([Math]::Round((1440 / `$smartnodeList.count) * 1000, 2)) RTM (+ fees)"
+    if (`$smartnodeList.count -eq 0) {
+        Display-Information 'Estimated reward per day.....' "N/A"
+    } else {
+        Display-Information 'Estimated reward per day.....' "`$([Math]::Round((1440 / `$smartnodeList.count) * 1000, 2)) RTM (+ fees)"
+    }
     if (`$lastPaidBlock -ne `$null) {
         `$lastPaidTime = [DateTimeOffset]::FromUnixTimeSeconds(`$lastPaidBlock.time).ToLocalTime().DateTime
         `$timeElapsedDisplay = "{0}d {1}h {2}m" -f `$((Get-Date) - `$lastPaidTime).Days, `$((Get-Date) - `$lastPaidTime).Hours, `$((Get-Date) - `$lastPaidTime).Minutes
