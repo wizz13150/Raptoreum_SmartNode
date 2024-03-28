@@ -115,7 +115,7 @@ function Install-7Zip {
 }
 
 function Extract-Bootstrap {
-    Write-CurrentTime; Write-Host "  Extracting bootstrap from: $Path..." -ForegroundColor Yellow
+    Write-CurrentTime; Write-Host "  Extracting bootstrap from: $bootstrapZipPath..." -ForegroundColor Yellow
     Write-CurrentTime; Write-Host "  Extracting bootstrap to  : $configDir\$testnetfolder..." -ForegroundColor Yellow
     $zipProgram = ""
     $7zipKey = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\7zFM.exe"
@@ -124,7 +124,7 @@ function Extract-Bootstrap {
     }
     if ($zipProgram) {
         Write-CurrentTime; Write-Host "  7-Zip detected, using 7-Zip to extract the bootstrap. Faster..." -ForegroundColor Cyan
-        & "$zipProgram" x $Path -o"$configDir" -y
+        & "$zipProgram" x $bootstrapZipPath -o"$configDir" -y
     } else {
         Write-CurrentTime; Write-Host "  7-Zip not detected, using 'Expand-Archive' to extract the bootstrap. Slower..." -ForegroundColor Cyan
         Expand-Archive -Path $bootstrapZipPath -DestinationPath "$configDir" -Force -ErrorAction SilentlyContinue
