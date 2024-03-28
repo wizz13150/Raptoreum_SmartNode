@@ -383,6 +383,7 @@ function Chain-Backup {
     $chainBackupScript = @"
 `$bootstrapZipPath = "$bootstrapZipPath"
 `$configDir = "$configDir"
+`$testnetfolder = "$testnetfolder"
 Write-Host "(`$((Get-Date).ToString('yyyy-MM-dd HH:mm:ss')))  Creating blockchain backup (bootstrap)..." -ForegroundColor Yellow
 Move-Item -Path "`$env:USERPROFILE\check_testnet.ps1" -Destination "`$env:USERPROFILE\temp.ps1" -ErrorAction SilentlyContinue -Force
 Stop-Service -Name $serviceName -ErrorAction SilentlyContinue -Force
@@ -520,6 +521,7 @@ function Display-Information(`$message, `$value, `$color = 'Green') {
     Write-Host "`$message : `$value" -ForegroundColor `$color
 }
 `$first = `$true
+`$testnetfolder = "$testnetfolder"
 while (`$true) {
     if (`$first) {        
         Write-Host "----------------------------------" -ForegroundColor Cyan
