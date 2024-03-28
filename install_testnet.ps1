@@ -284,7 +284,7 @@ rpcuser=$rpcUser
 rpcpassword=$password
 rpcallowip=127.0.0.1
 rpcbind=127.0.0.1
-port=10229
+port=10230
 server=1
 testnet=1
 listen=1
@@ -682,8 +682,8 @@ function Basic-Security {
         Write-CurrentTime; Write-Host "  Configuring firewall..." -ForegroundColor Cyan
         # Allow SSH and RTM ports
         New-NetFirewallRule -DisplayName "Allow SSH" -Direction Inbound -LocalPort $global:sshPort -Protocol TCP -Action Allow | Out-Null
-        New-NetFirewallRule -DisplayName "Allow Testnet RTM" -Direction Inbound -LocalPort "10229" -Protocol TCP -Action Allow | Out-Null
-        #New-NetFirewallRule -DisplayName "Allow Raptoreumd" -Direction Inbound -Program "C:\program files (x86)\raptoreumcore\raptoreumd.exe" -Action Allow -Protocol TCP -LocalPort 10229 | Out-Null
+        New-NetFirewallRule -DisplayName "Allow Testnet RTM" -Direction Inbound -LocalPort "10230" -Protocol TCP -Action Allow | Out-Null
+        #New-NetFirewallRule -DisplayName "Allow Raptoreumd" -Direction Inbound -Program "C:\program files (x86)\raptoreumcore\raptoreumd.exe" -Action Allow -Protocol TCP -LocalPort 10230 | Out-Null
         #Set-NetFirewallRule -Name "Allow Raptoreumd" -Profile Any | Out-Null
         Write-CurrentTime; Write-Host "  Firewall configured successfully." -ForegroundColor Yellow
     } else {
