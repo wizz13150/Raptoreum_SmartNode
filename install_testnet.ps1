@@ -21,7 +21,7 @@ $configDir = "$env:APPDATA\RaptoreumSmartnode"
 $coinPath = "$env:ProgramFiles (x86)\RaptoreumCore"
 $testnetfolder = "rip01-testnet"
 $configPath = "$configDir\$testnetfolder\raptoreum_testnet.conf"
-$bootstrapZipPath = "$env:APPDATA\bootstrap\bootstrap-testnet.zip"
+$bootstrapZipPath = "$env:APPDATA\bootstrap\rip01-testnet-no-index-bootstrap.zip"
 $serviceName = "RTMServiceTestnet"
 
 
