@@ -65,7 +65,7 @@ https://user-images.githubusercontent.com/22177081/226721832-e33d81f6-2c47-4779-
 ***
 
 
-__Do not forget to open port 10226 (or 10229 for testnet)__
+__Do not forget to open port 10226 (or 10230 for testnet)__
 
 __Always encrypt your wallet with a strong password__
 > ℹ Info: You could ask support questions in [Raptoreum's Discord](https://discord.gg/wqgcxT3Mgh)
