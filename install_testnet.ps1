@@ -15,11 +15,12 @@ if (-not (IsAdministrator)) {
 }
 
 # Script vars
-$bootstrapZip = "https://bootstrap.raptoreum.com/testnet-bootstraps/testnet-bootstrap-1.3.17.02rc.zip"                        #Official testnet bootstrap
+$bootstrapZip = "https://bootstrap.raptoreum.com/testnet-bootstraps/rip01-testnet-no-index-bootstrap.zip"                       #Official testnet bootstrap
 #$bootstrapZip = "https://github.com/wizz13150/Raptoreum_SmartNode/releases/download/Raptoreum_SmartNode/bootstrap-testnet.zip" #wizz's bootstrap
 $configDir = "$env:APPDATA\RaptoreumSmartnode"
 $coinPath = "$env:ProgramFiles (x86)\RaptoreumCore"
-$configPath = "$configDir\nodetest\raptoreum_testnet.conf"
+$testnetfolder = "rip01-testnet"
+$configPath = "$configDir\$testnetfolder\raptoreum_testnet.conf"
 $bootstrapZipPath = "$env:APPDATA\bootstrap\bootstrap-testnet.zip"
 $serviceName = "RTMServiceTestnet"
 
@@ -58,7 +59,7 @@ function Wipe-Clean {
     if (Get-Service -Name $serviceName -ErrorAction SilentlyContinue) {
         sc.exe delete $serviceName | Out-Null
     }
-    Remove-Item -Path $configDir\nodetest -Recurse -ErrorAction SilentlyContinue -Force
+    Remove-Item -Path $configDir\$testnetfolder -Recurse -ErrorAction SilentlyContinue -Force
     Remove-Item -Path $coinPath -Recurse -ErrorAction SilentlyContinue -Force
     [Environment]::SetEnvironmentVariable("traptoreumcli", "$null", "Machine")
 
@@ -86,7 +87,7 @@ function Environment-Variable {
     if (-not ($envPath.Contains($newPath))) {
         [Environment]::SetEnvironmentVariable("Path", "$envPath;$newPath", "Machine")
     }
-    $global:CLI = "`"$coinPath\raptoreum-cli.exe`" -testnet -datadir=`"$configDir`" -conf=`"$configDir\nodetest\raptoreum_testnet.conf`""
+    $global:CLI = "`"$coinPath\raptoreum-cli.exe`" -testnet -datadir=`"$configDir`" -conf=`"$configDir\$testnetfolder\raptoreum_testnet.conf`""
     [Environment]::SetEnvironmentVariable("traptoreumcli", "$CLI", "Machine")
 }
 
@@ -114,8 +115,8 @@ function Install-7Zip {
 }
 
 function Extract-Bootstrap {
-    Write-CurrentTime; Write-Host "  Extracting bootstrap from: $bootstrapZipPath..." -ForegroundColor Yellow
-    Write-CurrentTime; Write-Host "  Extracting bootstrap to  : $configDir\nodetest..." -ForegroundColor Yellow
+    Write-CurrentTime; Write-Host "  Extracting bootstrap from: $Path..." -ForegroundColor Yellow
+    Write-CurrentTime; Write-Host "  Extracting bootstrap to  : $configDir\$testnetfolder..." -ForegroundColor Yellow
     $zipProgram = ""
     $7zipKey = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\7zFM.exe"
     if (Test-Path $7zipKey) {
@@ -123,10 +124,10 @@ function Extract-Bootstrap {
     }
     if ($zipProgram) {
         Write-CurrentTime; Write-Host "  7-Zip detected, using 7-Zip to extract the bootstrap. Faster..." -ForegroundColor Cyan
-        & "$zipProgram" x $bootstrapZipPath -o"$configDir\nodetest" -y
+        & "$zipProgram" x $Path -o"$configDir\$testnetfolder" -y
     } else {
         Write-CurrentTime; Write-Host "  7-Zip not detected, using 'Expand-Archive' to extract the bootstrap. Slower..." -ForegroundColor Cyan
-        Expand-Archive -Path $bootstrapZipPath -DestinationPath "$configDir\nodetest" -Force -ErrorAction SilentlyContinue
+        Expand-Archive -Path $bootstrapZipPath -DestinationPath "$configDir\$testnetfolder" -Force -ErrorAction SilentlyContinue
     }
     Start-Sleep -Seconds 1
 }
@@ -266,7 +267,7 @@ function Create-Conf {
     }
     if (Test-Path $configPath) {
         Write-CurrentTime; Write-Host "  Existing conf file found backing up to Raptoreum_testnet.old ..." -ForegroundColor Yellow
-        Move-Item -Path $configPath -Destination "$configDir\nodetest\Raptoreum_testnet.old" -Force
+        Move-Item -Path $configPath -Destination "$configDir\$testnetfolder\Raptoreum_testnet.old" -Force
     }
     $rpcUser = -join ((65..90) + (97..122) | Get-Random -Count 8 | % {[char]$_})
     $password = -join ((65..90) + (97..122) | Get-Random -Count 20 | % {[char]$_})
@@ -274,8 +275,8 @@ function Create-Conf {
     Start-Sleep -Seconds 1
     if (-not (Test-Path $configDir)) {
         New-Item -ItemType Directory -Path $configDir | Out-Null
-        if (-not (Test-Path "$configDir\nodetest")) {            
-            New-Item -ItemType Directory -Path "$configDir\nodetest" | Out-Null
+        if (-not (Test-Path "$configDir\$testnetfolder")) {            
+            New-Item -ItemType Directory -Path "$configDir\$testnetfolder" | Out-Null
         }
     }
     $configContent = @"
@@ -403,10 +404,10 @@ if (Test-Path `$7zipKey) {
 }
 if (`$zipProgram) {
     Write-Host "(`$((Get-Date).ToString('yyyy-MM-dd HH:mm:ss')))  7-Zip detected, using 7-Zip to compress the bootstrap. Faster..." -ForegroundColor Cyan
-    & "`$zipProgram" a -tzip `$bootstrapZipPath "`$configDir\nodetest\blocks" "`$configDir\nodetest\chainstate" "`$configDir\nodetest\evodb" "`$configDir\nodetest\llmq" "`$configDir\nodetest\powcache.dat"
+    & "`$zipProgram" a -tzip `$bootstrapZipPath "`$configDir\`$testnetfolder\blocks" "`$configDir\`$testnetfolder\chainstate" "`$configDir\`$testnetfolder\evodb" "`$configDir\`$testnetfolder\llmq" "`$configDir\`$testnetfolder\powcache.dat"
 } else {
     Write-Host "(`$((Get-Date).ToString('yyyy-MM-dd HH:mm:ss')))  7-Zip not detected, using 'Expand-Archive' to compress the bootstrap. Slower..." -ForegroundColor Cyan
-    Compress-Archive -Path "`$configDir\nodetest\blocks", "`$configDir\nodetest\chainstate", "`$configDir\nodetest\evodb", "`$configDir\nodetest\llmq", "`$configDir\nodetest\powcache.dat" -DestinationPath `$bootstrapZipPath
+    Compress-Archive -Path "`$configDir\`$testnetfolder\blocks", "`$configDir\`$testnetfolder\chainstate", "`$configDir\`$testnetfolder\evodb", "`$configDir\`$testnetfolder\llmq", "`$configDir\`$testnetfolder\powcache.dat" -DestinationPath `$bootstrapZipPath
 }
 Write-Host "(`$((Get-Date).ToString('yyyy-MM-dd HH:mm:ss')))  Bootstrap created" -ForegroundColor Green
 Start-Service -Name $serviceName -ErrorAction SilentlyContinue
@@ -548,7 +549,7 @@ while (`$true) {
     if (`$first) {Write-Host "Retrieved getblockcount..........." -NoNewline -ForegroundColor cyan; Write-Host "√" -ForegroundColor Green}
     `$smartnodeVersion = Get-Item "`$env:ProgramFiles (x86)\RaptoreumCore\raptoreumd.exe" -ErrorAction SilentlyContinue| Get-ItemProperty | Select-Object -ExpandProperty VersionInfo
     if (`$first) {Write-Host "Retrieved smartnode version......." -NoNewline -ForegroundColor cyan; Write-Host "√" -ForegroundColor Green}
-    `$folderSize = Get-ChildItem "`$env:APPDATA\RaptoreumSmartnode\nodetest" -Recurse | Measure-Object -Property Length -Sum
+    `$folderSize = Get-ChildItem "`$env:APPDATA\RaptoreumSmartnode\`$testnetfolder" -Recurse | Measure-Object -Property Length -Sum
     if (`$first) {Write-Host "Retrieved smartnode folder size..." -NoNewline -ForegroundColor cyan; Write-Host "√" -ForegroundColor Green}
     `$systemStabilityIndex = Get-WmiObject -Class Win32_ReliabilityStabilityMetrics | Select-Object -ExpandProperty SystemStabilityIndex -First 1
     if (`$first) {Write-Host "Retrieved system stability index.." -NoNewline -ForegroundColor cyan; Write-Host "√" -ForegroundColor Green}
@@ -598,7 +599,7 @@ while (`$true) {
     }
     Display-Information 'IP address and port..........' `$(`$smartnodeStatus.service)
     Display-Information 'Smartnode ProTX..............' ((Get-Content "`$env:USERPROFILE\check_testnet.ps1" | Where-Object { `$_ -like "*NODE_PROTX =*" }) -replace ".*NODE_PROTX\s*=\s*", "" -replace '^"|"`$', '')
-    Display-Information 'Smartnode BLS Key............' ((Get-Content "`$env:APPDATA\RaptoreumSmartnode\nodetest\raptoreum_testnet.conf" | Where-Object { `$_ -like "smartnodeblsprivkey=*" }) -replace "smartnodeblsprivkey=", "")
+    Display-Information 'Smartnode BLS Key............' ((Get-Content "`$env:APPDATA\RaptoreumSmartnode\`$testnetfolder\raptoreum_testnet.conf" | Where-Object { `$_ -like "smartnodeblsprivkey=*" }) -replace "smartnodeblsprivkey=", "")
     Display-Information 'Payout address...............' `$(`$smartnodeStatus.dmnState.payoutAddress)
     Display-Information 'Registered height............' `$(`$smartnodeStatus.dmnState.registeredHeight)
     Display-Information 'PoSe score (Time to 0).......' "`$(`$smartnodeStatus.dmnState.PoSePenalty) (`$([math]::Floor((`$smartnodeStatus.dmnState.PoSePenalty) * 2 / 60))h `$(`$smartnodeStatus.dmnState.PoSePenalty * 2 % 60)min)" -Color `$(Get-DataColor (`$smartnodeStatus.dmnState.PoSePenalty -eq 0))
