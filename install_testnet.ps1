@@ -566,7 +566,7 @@ while (`$true) {
     if (`$lastPaidBlock.tx -ne `$null -and `$lastPaidBlock.tx.Count -gt 0) {
         `$smartnodeRewardTx = cmd /C "`$env:traptoreumcli getrawtransaction `$(`$lastPaidBlock.tx[0]) 1" | ConvertFrom-Json
     } else {
-        `$smartnodeRewardTx = $null
+        `$smartnodeRewardTx = `$null
     }
     if (`$first) {Write-Host "Retrieved smartnode reward........" -NoNewline -ForegroundColor cyan; Write-Host "√" -ForegroundColor Green}
     `$latest = Invoke-RestMethod -Uri "https://api.github.com/repos/Raptor3um/raptoreum/releases/latest" -ErrorAction SilentlyContinue
