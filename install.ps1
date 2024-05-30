@@ -316,12 +316,26 @@ addnode=lbdn.raptoreum.com
 
 function Install-Bins {
     Write-CurrentTime; Write-Host "  Installing latest binaries..." -ForegroundColor Cyan
-    $uri = "https://api.github.com/repos/Raptor3um/raptoreum/releases/latest"
-    $response = Invoke-RestMethod -Uri $uri
-    $latestVersion = $response.tag_name
+    $uri = "https://api.github.com/repos/Raptor3um/raptoreum/releases"
+    $responses = Invoke-RestMethod -Uri $uri
 
-    # Find the latest bin to download
-    $assets = $response.assets
+    $latestMainnetRelease = $null
+    foreach ($response in $responses) {
+        if ($response.tag_name -match "mainnet") {
+            $latestMainnetRelease = $response
+            break
+        }
+    }
+
+    if (-not $latestMainnetRelease) {
+        Write-Host "Could not find a mainnet release, ping Wizz lol" -ForegroundColor Red
+        return
+    }
+
+    $latestVersion = $latestMainnetRelease.tag_name
+
+    # Extraire les assets de la release et trouver l'URL du fichier zip
+    $assets = $latestMainnetRelease.assets
     $walletUrl = $null
     foreach ($asset in $assets) {
         if ($asset.name -match "raptoreum-win-$latestVersion.*\.zip$") {
@@ -330,7 +344,7 @@ function Install-Bins {
     }
 
     if (-not $walletUrl) {
-        Write-Host "Could not find the wallet URL for the latest version" -ForegroundColor Red
+        Write-Host "Could not find the wallet URL for the mainnet version, ping Wizz lol" -ForegroundColor Red
         return
     }
 
