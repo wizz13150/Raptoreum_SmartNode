@@ -558,22 +558,26 @@ if (`$confirmUpdate.ToLower() -eq "y") {
         }
     }
     Write-Host "Installing latest binaries..." -ForegroundColor Yellow
-    `$uri = "https://api.github.com/repos/Raptor3um/raptoreum/releases/latest"
-    `$response = Invoke-RestMethod -Uri `$uri
-    `$latestVersion = `$response.tag_name
-    
-    # Extraire les assets de la release et trouver l'URL du fichier zip
-    `$assets = `$response.assets
+    `$uri = "https://api.github.com/repos/Raptor3um/raptoreum/releases"
+    `$responses = Invoke-RestMethod -Uri `$uri
+    `$latestRelease = `$null
+    foreach (`$response in `$responses) {
+        if (`$response.tag_name -match "mainnet") {
+            `$latestRelease = `$response
+            break
+        }
+    }    
+    if (-not `$latestRelease) {
+        Write-Host "Could not find a mainnet release" -ForegroundColor Red
+        return
+    }    
+    `$latestVersion = `$latestRelease.tag_name
+    `$assets = `$latestRelease.assets
     `$walletUrl = `$null
     foreach (`$asset in `$assets) {
         if (`$asset.name -match "raptoreum-win-`$latestVersion.*\.zip`$") {
             `$walletUrl = `$asset.browser_download_url
         }
-    }
-    
-    if (-not `$walletUrl) {
-        Write-Host "Could not find the wallet URL for the latest version" -ForegroundColor Red
-        return
     }
     Write-Host "Downloading..." -ForegroundColor Yellow
     Start-BitsTransfer -Source `$walletUrl -Destination "`$coinPath\raptoreum.zip" -DisplayName "Downloading binaries from `$walletUrl"
