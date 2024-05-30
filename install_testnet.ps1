@@ -462,26 +462,46 @@ if (-not (IsAdministrator)) {
     exit
 }
 `$coinPath = "`$env:ProgramFiles (x86)\RaptoreumCore"
-#Show versions
+# Show versions
 `$FilePath = "`$coinPath\raptoreumd.exe"
-`$fileVersionInfo = Get-Item `$FilePath -ErrorAction SilentlyContinue| Get-ItemProperty | Select-Object -ExpandProperty VersionInfo
+`$fileVersionInfo = Get-Item `$FilePath -ErrorAction SilentlyContinue | Get-ItemProperty | Select-Object -ExpandProperty VersionInfo
 `$fileVerion = `$fileVersionInfo.ProductVersion
-`$uri = "https://api.github.com/repos/Raptor3um/raptoreum/releases/latest"
-`$response = Invoke-RestMethod -Uri `$uri
-`$latestVersion = `$response.tag_name
-if (Test-Path `$coinPath) {
-    if (`$fileVerion -ne `$latestVersion) {
-            Write-Host "Your Smartnode version is            : `$fileVerion" -ForegroundColor Yellow
-    } 
-    else {
-        Write-Host "Your Smartnode version is            : `$fileVerion" -ForegroundColor Green
+
+# Define the network type ("mainnet" or "testnet")
+`$networkType = "testnet"
+
+# Find the latest release corresponding to the network type
+`$uri = "https://api.github.com/repos/Raptor3um/raptoreum/releases"
+`$responses = Invoke-RestMethod -Uri `$uri
+
+`$latestRelease = `$null
+foreach (`$response in `$responses) {
+    if (`$response.tag_name -match `$networkType) {
+        `$latestRelease = `$response
+        break
     }
 }
-else {
+
+if (-not `$latestRelease) {
+    Write-Host "Could not find a `$networkType release" -ForegroundColor Red
+    return
+}
+
+`$latestVersion = `$latestRelease.tag_name
+
+# Display detected versions
+if (Test-Path `$coinPath) {
+    if (`$fileVerion -ne `$latestVersion) {
+        Write-Host "Your Smartnode version is            : `$fileVerion" -ForegroundColor Yellow
+    } else {
+        Write-Host "Your Smartnode version is            : `$fileVerion" -ForegroundColor Green
+    }
+} else {
     Write-Host "Your Smartnode version is            : Not found" -ForegroundColor Yellow
 }
 Write-Host "Last RaptoreumCore version available : `$latestVersion" -ForegroundColor Green
 Write-Host "Download link: https://github.com/Raptor3um/raptoreum/releases/tag/`$latestVersion" -ForegroundColor Yellow
+
 # Confirm update
 `$confirmUpdate = Read-Host " Do you really want to update your SmartNode ? (y/n)"
 if (`$confirmUpdate.ToLower() -eq "y") {
@@ -513,26 +533,16 @@ if (`$confirmUpdate.ToLower() -eq "y") {
         }
     }
     Write-Host "Installing latest binaries..." -ForegroundColor Yellow
-    `$uri = "https://api.github.com/repos/Raptor3um/raptoreum/releases"
-    `$responses = Invoke-RestMethod -Uri `$uri
-    `$latestRelease = `$null
-    foreach (`$response in `$responses) {
-        if (`$response.tag_name -match "testnet") {
-            `$latestRelease = `$response
-            break
-        }
-    }    
-    if (-not `$latestRelease) {
-        Write-Host "Could not find a testnet release" -ForegroundColor Red
-        return
-    }    
-    `$latestVersion = `$latestRelease.tag_name
     `$assets = `$latestRelease.assets
     `$walletUrl = `$null
     foreach (`$asset in `$assets) {
         if (`$asset.name -match "raptoreum-win-`$latestVersion.*\.zip`$") {
             `$walletUrl = `$asset.browser_download_url
         }
+    }
+    if (-not `$walletUrl) {
+        Write-Host "Could not find the wallet URL for the `$networkType version" -ForegroundColor Red
+        return
     }
     Write-Host "Downloading..." -ForegroundColor Yellow
     Start-BitsTransfer -Source `$walletUrl -Destination "`$coinPath\raptoreum.zip" -DisplayName "Downloading binaries from `$walletUrl"
@@ -542,7 +552,7 @@ if (`$confirmUpdate.ToLower() -eq "y") {
     Start-Service -Name $serviceName -ErrorAction SilentlyContinue
     Write-Host "Binaries updated to v`$latestVersion successfully..." -ForegroundColor Green
 } else {
-Write-Host "Skipping update..." -ForegroundColor Yellow
+    Write-Host "Skipping update..." -ForegroundColor Yellow
 }
 pause
 "@
